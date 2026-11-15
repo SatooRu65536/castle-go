@@ -6,6 +6,11 @@ import dev.satooru.castles.go.data.remote.CastleWikiApi
 import dev.satooru.castles.go.data.repository.CastleRepository
 import dev.satooru.castles.go.data.repository.SyncRepository
 import dev.satooru.castles.go.data.repository.VisitRepository
+import dev.satooru.castles.go.location.LocationRepository
+import dev.satooru.castles.go.settings.SettingsRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -37,4 +42,8 @@ class AppContainer(context: Context) {
     val syncRepository = SyncRepository(api, database, isCarConnected = { carConnected.get() })
     val castleRepository = CastleRepository(api, database, json)
     val visitRepository = VisitRepository(database)
+
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val settingsRepository = SettingsRepository(context)
+    val locationRepository = LocationRepository(context, appScope, settingsRepository)
 }

@@ -2,6 +2,13 @@ package dev.satooru.castles.go.ui.map
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import dev.satooru.castles.go.data.local.ScaleMask
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.foundation.layout.Box
@@ -13,6 +20,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.MaterialTheme
@@ -131,6 +139,7 @@ fun MapScreen(
         if (following && here != null) camera.animate(CameraUpdateFactory.newLatLng(LatLng(here.lat, here.lng)))
     }
     var mapLoaded by remember { mutableStateOf(false) }
+    var showScaleFilter by remember { mutableStateOf(false) }
     // 動きが止まったときのカメラの位置．重なる城をまとめ直す契機にする（動いている間は組み直さない）．
     var settledPosition by remember { mutableStateOf(camera.position) }
     // カメラの移動が止まったとき（`move` のように移動中にならない更新も含む）と，地図の読み込み後に，表示範囲の城を読み直す．
@@ -294,6 +303,7 @@ fun MapScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             AppIconButton(Icons.Filled.Settings, "設定", openSettings)
+            AppIconButton(Icons.Filled.FilterList, "表示する規模", { showScaleFilter = !showScaleFilter })
             if (location != null) {
                 AppIconButton(Icons.Filled.MyLocation, "現在地へ移動", {
                     location?.let { here ->
@@ -305,6 +315,18 @@ fun MapScreen(
                     }
                 })
             }
+        }
+
+        // 表示する規模を選ぶパネル．右上のボタンの左に出す．
+        if (showScaleFilter) {
+            ScaleFilterPanel(
+                mask = settings.visibleScaleMask,
+                onToggle = { scale ->
+                    container.settingsRepository.update { it.copy(visibleScaleMask = ScaleMask.toggle(it.visibleScaleMask, scale)) }
+                },
+                onSelectAll = { container.settingsRepository.update { it.copy(visibleScaleMask = ScaleMask.ALL) } },
+                modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 12.dp, end = 72.dp),
+            )
         }
 
         if (!BuildConfig.HAS_MAPS_API_KEY) {
@@ -360,5 +382,37 @@ private fun CenterCrosshair(modifier: Modifier = Modifier) {
         }
         cross(androidx.compose.ui.graphics.Color.White, 4.dp.toPx())
         cross(androidx.compose.ui.graphics.Color(0xFF1C1917), 1.5.dp.toPx())
+    }
+}
+
+/** 地図に表示する規模（1〜6）を選ぶパネル．規模ごとに表示・非表示を切り替える．すべてを非表示にはできない． */
+@Composable
+private fun ScaleFilterPanel(
+    mask: Int,
+    onToggle: (Int) -> Unit,
+    onSelectAll: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AppCard(modifier.width(264.dp), title = "表示する規模") {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            (1..6).forEach { scale ->
+                val on = ScaleMask.contains(mask, scale)
+                Box(
+                    Modifier.size(34.dp)
+                        .background(if (on) androidx.compose.ui.graphics.Color.Black else androidx.compose.ui.graphics.Color.White, RoundedCornerShape(8.dp))
+                        .border(1.dp, androidx.compose.ui.graphics.Color(0xFFD1D5DB), RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { onToggle(scale) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        "$scale",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (on) androidx.compose.ui.graphics.Color.White else androidx.compose.ui.graphics.Color.Black,
+                    )
+                }
+            }
+        }
+        if (mask != ScaleMask.ALL) PrimaryButton("すべて表示", outlined = true, onClick = onSelectAll)
     }
 }

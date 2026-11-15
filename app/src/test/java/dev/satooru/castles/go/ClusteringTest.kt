@@ -96,4 +96,20 @@ class ClusteringTest {
         assertEquals(expected, actualGroups)
         assertTrue(actual.any { it is MapItem.Cluster })
     }
+
+    @Test
+    fun scaleMaskTogglesAndNeverBecomesEmpty() {
+        val m = dev.satooru.castles.go.data.local.ScaleMask
+        assertEquals(listOf(1, 2, 3, 4, 5, 6), m.scales(m.ALL))
+        assertEquals(63, m.of(1..6))
+        val withoutOne = m.toggle(m.ALL, 1)
+        assertEquals(listOf(2, 3, 4, 5, 6), m.scales(withoutOne))
+        assertEquals(m.ALL, m.toggle(withoutOne, 1)) // もう一度で元に戻る
+        // 最後の 1 つは非表示にできない
+        val only4 = m.of(listOf(4))
+        assertEquals(only4, m.toggle(only4, 4))
+        assertTrue(m.contains(only4, 4))
+        assertTrue(!m.contains(only4, 5))
+        assertTrue(!m.contains(m.ALL, 7)) // 範囲外の規模は含まない
+    }
 }

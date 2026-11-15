@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.stateIn
@@ -76,7 +77,8 @@ class MapViewModel(private val container: AppContainer) : ViewModel() {
                     if (origin == null) emptyList()
                     else repository.nearby(
                         origin = origin,
-                        filter = CastleFilter(),
+                        // 表示する規模の設定は，左上の最寄りの城にも使う（地図に出ていない城を出さないため）．
+                        filter = CastleFilter(scaleMask = settings.visibleScaleMask),
                         limit = NEARBY_COUNT,
                         // スマホは近い順に 3 件．件数 N・半径の設定は Android Auto のみに使う．
                         radiusKm = null,
@@ -100,11 +102,14 @@ class MapViewModel(private val container: AppContainer) : ViewModel() {
     /** 現在地を中心にして追従している間は true */
     var following = false
 
-    /** 表示範囲の城のみ．規模で間引き，件数にも上限を設ける． */
-    val castles: StateFlow<List<CastleEntity>> = viewport.filterNotNull()
-        .flatMapLatest { v ->
+    /** 表示範囲の城．設定で表示を選んだ規模のみ（件数の上限や，ズームによる間引きはしない）． */
+    val castles: StateFlow<List<CastleEntity>> = combine(
+        viewport.filterNotNull(),
+        container.settingsRepository.settings.map { it.visibleScaleMask }.distinctUntilChanged(),
+    ) { v, mask -> v to mask }
+        .flatMapLatest { (v, mask) ->
             // スマホでは画面内の城をすべて出す（件数の上限・規模の間引きはしない）．まとめて表示するため，重なっても読みやすい．
-            repository.observeInBounds(v.minLat, v.maxLat, v.minLng, v.maxLng, 1, Int.MAX_VALUE)
+            repository.observeInBounds(v.minLat, v.maxLat, v.minLng, v.maxLng, 1, mask, Int.MAX_VALUE)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 

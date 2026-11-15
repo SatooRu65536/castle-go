@@ -34,6 +34,8 @@ data class AppSettings(
     val carNotifyUnvisitedOnly: Boolean = false,
     /** アプリを閉じている間も通知する（Geofencing）．背景の位置情報の権限（常に許可）が必要． */
     val backgroundNotifyEnabled: Boolean = false,
+    /** 地図に表示する規模の集合（[dev.satooru.castles.go.data.local.ScaleMask]）．既定はすべて */
+    val visibleScaleMask: Int = dev.satooru.castles.go.data.local.ScaleMask.ALL,
 ) {
     val effectiveRadiusKm: Double get() = radiusKm ?: travelMode.defaultRadiusKm
 }

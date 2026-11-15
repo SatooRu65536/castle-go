@@ -16,7 +16,7 @@ object CastleFilterSql {
     const val WHERE =
         "(:query = '' OR searchText LIKE '%' || :query || '%' ESCAPE '\\') " +
             "AND (:prefecture IS NULL OR prefecture = :prefecture) " +
-            "AND scale >= :minScale " +
+            "AND scale >= :minScale AND ((1 << (scale - 1)) & :scaleMask) != 0 " +
             "AND (:castleKind IS NULL OR castleKind = :castleKind) " +
             "AND (:tenshuStatus IS NULL OR tenshuStatus = :tenshuStatus) " +
             "AND (:locationType IS NULL OR locationType = :locationType) " +
@@ -53,6 +53,7 @@ interface CastleDao {
         query: String,
         prefecture: String?,
         minScale: Int,
+        scaleMask: Int,
         castleKind: String?,
         tenshuStatus: String?,
         locationType: String?,
@@ -71,6 +72,7 @@ interface CastleDao {
         query: String,
         prefecture: String?,
         minScale: Int,
+        scaleMask: Int,
         castleKind: String?,
         tenshuStatus: String?,
         locationType: String?,
@@ -96,6 +98,7 @@ interface CastleDao {
         query: String,
         prefecture: String?,
         minScale: Int,
+        scaleMask: Int,
         castleKind: String?,
         tenshuStatus: String?,
         locationType: String?,
@@ -104,10 +107,10 @@ interface CastleDao {
         unvisitedOnly: Int,
     ): List<CastleEntity>
 
-    /** 地図の表示範囲の城．規模で間引くため [minScale] 以上のみ返す． */
+    /** 地図の表示範囲の城．[minScale] 以上で，[scaleMask] に含まれる規模のみ返す． */
     @Query(
         "SELECT * FROM castle WHERE deletedAt IS NULL AND lat BETWEEN :minLat AND :maxLat " +
-            "AND lng BETWEEN :minLng AND :maxLng AND scale >= :minScale ORDER BY scale DESC, id LIMIT :limit",
+            "AND lng BETWEEN :minLng AND :maxLng AND scale >= :minScale AND ((1 << (scale - 1)) & :scaleMask) != 0 ORDER BY scale DESC, id LIMIT :limit",
     )
     fun observeInBounds(
         minLat: Double,
@@ -115,6 +118,7 @@ interface CastleDao {
         minLng: Double,
         maxLng: Double,
         minScale: Int,
+        scaleMask: Int,
         limit: Int,
     ): Flow<List<CastleEntity>>
 }

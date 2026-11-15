@@ -8,6 +8,7 @@ import dev.satooru.castles.go.data.local.AppDatabase
 import dev.satooru.castles.go.data.local.CastleDetailEntity
 import dev.satooru.castles.go.data.local.CastleEntity
 import dev.satooru.castles.go.data.local.CastleTagEntity
+import dev.satooru.castles.go.data.local.ScaleMask
 import dev.satooru.castles.go.data.remote.CastleWikiApi
 import dev.satooru.castles.go.data.remote.PhotoDto
 import kotlinx.coroutines.flow.Flow
@@ -25,6 +26,8 @@ data class CastleFilter(
     val query: String = "",
     val prefecture: String? = null,
     val minScale: Int = 1,
+    /** 表示する規模の集合（[ScaleMask]）．既定はすべて */
+    val scaleMask: Int = ScaleMask.ALL,
     val castleKind: String? = null,
     val tenshuStatus: String? = null,
     val locationType: String? = null,
@@ -75,14 +78,14 @@ class CastleRepository(
         Pager(PagingConfig(pageSize = 50, enablePlaceholders = false)) {
             if (origin == null) {
                 castleDao.pagingByKana(
-                    filter.query.trim().let(::escapeLike), filter.prefecture, filter.minScale, filter.castleKind,
+                    filter.query.trim().let(::escapeLike), filter.prefecture, filter.minScale, filter.scaleMask, filter.castleKind,
                     filter.tenshuStatus, filter.locationType, filter.meijoSelection, filter.tagId,
                     if (filter.unvisitedOnly) 1 else 0,
                 )
             } else {
                 castleDao.pagingByDistance(
                     origin.lat, origin.lng, cosSquared(origin.lat),
-                    filter.query.trim().let(::escapeLike), filter.prefecture, filter.minScale, filter.castleKind,
+                    filter.query.trim().let(::escapeLike), filter.prefecture, filter.minScale, filter.scaleMask, filter.castleKind,
                     filter.tenshuStatus, filter.locationType, filter.meijoSelection, filter.tagId,
                     if (filter.unvisitedOnly) 1 else 0,
                 )
@@ -111,7 +114,7 @@ class CastleRepository(
             minLng = origin.lng - dLng, maxLng = origin.lng + dLng,
             // 半径の円の外側を取り除くため，範囲の矩形では余分に取る
             limit = if (radiusKm == null) limit else limit * 4,
-            query = filter.query.trim().let(::escapeLike), prefecture = filter.prefecture, minScale = filter.minScale,
+            query = filter.query.trim().let(::escapeLike), prefecture = filter.prefecture, minScale = filter.minScale, scaleMask = filter.scaleMask,
             castleKind = filter.castleKind, tenshuStatus = filter.tenshuStatus,
             locationType = filter.locationType, meijoSelection = filter.meijoSelection,
             tagId = filter.tagId, unvisitedOnly = if (filter.unvisitedOnly) 1 else 0,
@@ -124,8 +127,8 @@ class CastleRepository(
     }
 
     fun observeInBounds(
-        minLat: Double, maxLat: Double, minLng: Double, maxLng: Double, minScale: Int, limit: Int,
-    ): Flow<List<CastleEntity>> = castleDao.observeInBounds(minLat, maxLat, minLng, maxLng, minScale, limit)
+        minLat: Double, maxLat: Double, minLng: Double, maxLng: Double, minScale: Int, scaleMask: Int, limit: Int,
+    ): Flow<List<CastleEntity>> = castleDao.observeInBounds(minLat, maxLat, minLng, maxLng, minScale, scaleMask, limit)
 
     fun observeDetailCache(castleId: String): Flow<CastleDetailEntity?> = detailDao.observe(castleId)
 

@@ -1,5 +1,18 @@
 package dev.satooru.castles.go.ui.detail
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.ui.text.font.FontWeight
+import dev.satooru.castles.go.ui.common.AppCard
+import dev.satooru.castles.go.ui.common.AppIconButton
+import dev.satooru.castles.go.ui.common.PrimaryButton
+import dev.satooru.castles.go.ui.theme.AllyMuted
+import dev.satooru.castles.go.ui.theme.PrimaryMuted
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,16 +22,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -33,7 +39,6 @@ import dev.satooru.castles.go.data.repository.CastleDetail
 import dev.satooru.castles.go.data.repository.DistanceCalculator
 import dev.satooru.castles.go.data.repository.GeoPoint
 import dev.satooru.castles.go.ui.common.Labels
-import dev.satooru.castles.go.ui.common.SectionTitle
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -41,7 +46,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailScreen(viewModel: DetailViewModel, onBack: () -> Unit) {
     val castle by viewModel.castle.collectAsStateWithLifecycle()
@@ -49,56 +53,70 @@ fun DetailScreen(viewModel: DetailViewModel, onBack: () -> Unit) {
     val tags by viewModel.tags.collectAsStateWithLifecycle()
     val location by viewModel.location.collectAsStateWithLifecycle()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(castle?.name ?: "城の詳細") },
-                navigationIcon = { TextButton(onClick = onBack) { Text("戻る") } },
-            )
-        },
-    ) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState())) {
+    Box(Modifier.fillMaxSize().background(PrimaryMuted)) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             val c = castle
             if (c == null) {
-                Text("この城は端末にありません", Modifier.padding(16.dp))
-                return@Column
-            }
-            c.primaryPhotoId?.let {
-                AsyncImage(
-                    model = PhotoUrl.of(it, 1024),
-                    contentDescription = c.name,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxWidth().height(220.dp),
-                )
-            }
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(c.name, style = MaterialTheme.typography.headlineSmall)
-                if (c.nameKana.isNotEmpty()) Text(c.nameKana, style = MaterialTheme.typography.bodyMedium)
-                location?.let {
-                    Text(
-                        "現在地から ${Labels.distance(DistanceCalculator.meters(it, GeoPoint(c.lat, c.lng)))}",
-                        style = MaterialTheme.typography.titleSmall,
+                Text("この城は端末にありません", Modifier.statusBarsPadding().padding(start = 72.dp, top = 24.dp))
+            } else {
+                if (c.primaryPhotoId != null) {
+                    AsyncImage(
+                        model = PhotoUrl.of(c.primaryPhotoId, 1024),
+                        contentDescription = c.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxWidth().height(240.dp),
                     )
+                } else {
+                    Box(Modifier.statusBarsPadding().height(56.dp))
                 }
-                BasicInfo(c)
-                if (tags.isNotEmpty()) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        tags.forEach { AssistChip(onClick = {}, label = { Text(it.name) }) }
+                Column(
+                    Modifier.padding(16.dp).navigationBarsPadding(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    AppCard {
+                        Text(c.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                        if (c.nameKana.isNotEmpty()) {
+                            Text(c.nameKana, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        location?.let {
+                            Text(
+                                "現在地から ${Labels.distance(DistanceCalculator.meters(it, GeoPoint(c.lat, c.lng)))}",
+                                style = MaterialTheme.typography.titleSmall,
+                            )
+                        }
+                        BasicInfo(c)
+                        if (tags.isNotEmpty()) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                tags.forEach { TagChip(it.name) }
+                            }
+                        }
                     }
-                }
-                HorizontalDivider()
-                when (val s = state) {
-                    DetailUiState.Loading -> CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
-                    DetailUiState.Gone -> Text("この城は削除されました")
-                    DetailUiState.Failed -> {
-                        Text("詳細を取得できませんでした．通信を確認してください")
-                        Button(onClick = viewModel::load) { Text("再試行") }
+                    when (val st = state) {
+                        DetailUiState.Loading -> Box(Modifier.fillMaxWidth().padding(16.dp), Alignment.Center) { CircularProgressIndicator() }
+                        DetailUiState.Gone -> AppCard { Text("この城は削除されました") }
+                        DetailUiState.Failed -> AppCard {
+                            Text("詳細を取得できませんでした．通信を確認してください")
+                            PrimaryButton("再試行", onClick = viewModel::load)
+                        }
+                        is DetailUiState.Loaded -> DetailContent(st.detail)
                     }
-                    is DetailUiState.Loaded -> DetailContent(s.detail)
                 }
             }
         }
+        AppIconButton(
+            Icons.AutoMirrored.Filled.ArrowBack, "戻る", onBack,
+            Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 16.dp, top = 12.dp),
+        )
     }
+}
+
+@Composable
+private fun TagChip(name: String) {
+    Text(
+        name,
+        style = MaterialTheme.typography.labelMedium,
+        modifier = Modifier.background(AllyMuted, RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 4.dp),
+    )
 }
 
 @Composable
@@ -120,20 +138,31 @@ private fun BasicInfo(c: CastleEntity) {
 
 @Composable
 private fun DetailContent(detail: CastleDetail) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (detail.body.isNotBlank()) {
-            SectionTitle("解説")
-            Text(detail.body, style = MaterialTheme.typography.bodyMedium)
-        }
-        val attrs = detail.attributes.mapNotNull { (key, value) -> attributeText(value)?.let { key to it } }
-        if (attrs.isNotEmpty()) {
-            SectionTitle("属性")
+    if (detail.body.isNotBlank()) {
+        AppCard(title = "解説") { Text(detail.body, style = MaterialTheme.typography.bodyMedium) }
+    }
+    val attrs = detail.attributes
+        .filterKeys { it !in HIDDEN_ATTRIBUTES }
+        .mapNotNull { (key, value) -> attributeText(value)?.let { (ATTRIBUTE_LABELS[key] ?: key) to it } }
+    if (attrs.isNotEmpty()) {
+        AppCard(title = "属性") {
             attrs.forEach { (k, v) ->
                 Row { Text(k, Modifier.padding(end = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant); Text(v) }
             }
         }
     }
 }
+
+/** 基本情報として別に表示している属性は，属性の一覧から除く． */
+private val HIDDEN_ATTRIBUTES = setOf(
+    "name", "nameKana", "lat", "lng", "scale", "castleKind", "locationType", "prefecture", "tenshuStatus",
+    "meijoSelection", "meijoNumber",
+)
+
+private val ATTRIBUTE_LABELS = mapOf(
+    "city" to "市区町村", "addressDetail" to "住所", "builtYear" to "築城年", "builders" to "築城主",
+    "abandonedYear" to "廃城年", "lords" to "城主", "remains" to "遺構", "sources" to "出典",
+)
 
 /** `{ "state": "known", "value": ... }` を文字列にする．不明は「不明」，読めない形は NULL． */
 internal fun attributeText(element: JsonElement): String? {

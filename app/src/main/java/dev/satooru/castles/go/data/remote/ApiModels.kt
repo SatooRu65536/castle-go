@@ -1,5 +1,6 @@
 package dev.satooru.castles.go.data.remote
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
@@ -57,7 +58,8 @@ data class PhotoDto(
 
 @Serializable
 data class CastleDetailDto(
-    val revision: Int,
+    /** 実際の API のキーは `currentRevisionNumber` */
+    @SerialName("currentRevisionNumber") val revision: Int,
     val body: String = "",
     /** 属性．各値は `{ "state": "known", "value": ... }` または `{ "state": "unknown" }` */
     val attributes: Map<String, JsonElement> = emptyMap(),

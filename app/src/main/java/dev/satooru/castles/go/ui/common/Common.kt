@@ -41,15 +41,11 @@ fun LocationPermissionBanner(location: LocationRepository, modifier: Modifier = 
         location.onPermissionChanged()
     }
     if (granted) return
-    Row(
-        modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text("現在地を使うと，近い順に表示できます", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        Button(onClick = {
+    AppCard(modifier) {
+        Text("現在地を使うと，近い城を距離つきで表示できます", style = MaterialTheme.typography.bodyMedium)
+        PrimaryButton("位置情報を許可", onClick = {
             launcher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
-        }) { Text("許可") }
+        })
     }
 }
 

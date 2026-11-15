@@ -28,6 +28,7 @@ android {
         }
         val apiBaseUrl = props.getProperty("castleWiki.apiBaseUrl") ?: "https://api.castles.satooru.dev/"
         val mapsApiKey = props.getProperty("MAPS_API_KEY") ?: ""
+        buildConfigField("boolean", "HAS_MAPS_API_KEY", mapsApiKey.isNotBlank().toString())
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
         manifestPlaceholders["mapsApiKey"] = mapsApiKey
     }
@@ -57,6 +58,7 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)

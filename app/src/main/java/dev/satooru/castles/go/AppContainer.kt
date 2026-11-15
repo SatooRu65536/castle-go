@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 /** 依存の組み立て．スマートフォンと Android Auto は同じ Repository を通じて同じ Room を参照する． */
 class AppContainer(context: Context) {
-    val json = Json { ignoreUnknownKeys = true; explicitNulls = false }
+    val json = Json { ignoreUnknownKeys = true; explicitNulls = false; coerceInputValues = true }
     val database: AppDatabase = AppDatabase.create(context)
 
     val okHttpClient: OkHttpClient = OkHttpClient.Builder()

@@ -13,9 +13,13 @@ import androidx.navigation.navArgument
 import dev.satooru.castles.go.ui.common.rememberContainer
 import dev.satooru.castles.go.ui.detail.DetailScreen
 import dev.satooru.castles.go.ui.detail.DetailViewModel
+import dev.satooru.castles.go.ui.map.MapScreen
+import dev.satooru.castles.go.ui.map.MapViewModel
+import dev.satooru.castles.go.ui.settings.SettingsScreen
 
 object Routes {
     const val HOME = "home"
+    const val SETTINGS = "settings"
     const val DETAIL = "detail/{id}"
     fun detail(id: String) = "detail/$id"
 }
@@ -26,7 +30,15 @@ fun CastleGoNavHost() {
     val container = rememberContainer()
     NavHost(nav, startDestination = Routes.HOME) {
         composable(Routes.HOME) {
-            HomeScreen(onOpenCastle = { nav.navigate(Routes.detail(it)) })
+            val vm: MapViewModel = viewModel(factory = viewModelFactory { initializer { MapViewModel(container) } })
+            MapScreen(
+                vm,
+                onOpenCastle = { nav.navigate(Routes.detail(it)) },
+                onOpenSettings = { nav.navigate(Routes.SETTINGS) },
+            )
+        }
+        composable(Routes.SETTINGS) {
+            SettingsScreen(onBack = { nav.popBackStack() })
         }
         composable(Routes.DETAIL, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
             val id = entry.arguments?.getString("id").orEmpty()

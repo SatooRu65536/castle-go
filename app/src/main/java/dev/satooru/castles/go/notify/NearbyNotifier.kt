@@ -132,7 +132,7 @@ class NearbyNotifier(private val context: Context, private val container: AppCon
         )
         val openCar = PendingIntent.getService(context, castle.id.hashCode(), CarIntents.openCastle(context, castle.id), flags)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_stat_castle)
             .setContentTitle("${castle.name} が近くにあります")
             .setContentText(text)
             .setContentIntent(openApp)
@@ -144,7 +144,7 @@ class NearbyNotifier(private val context: Context, private val container: AppCon
                     .setImportance(NotificationManagerCompat.IMPORTANCE_HIGH)
                     .setContentTitle(castle.name)
                     .setContentText(text)
-                    .setSmallIcon(R.drawable.ic_launcher_foreground)
+                    .setSmallIcon(R.drawable.ic_stat_castle)
                     .setContentIntent(openCar)
                     .build(),
             )

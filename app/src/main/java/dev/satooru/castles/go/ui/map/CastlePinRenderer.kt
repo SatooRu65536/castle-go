@@ -16,7 +16,7 @@ class PinImage(val descriptor: BitmapDescriptor, val anchorU: Float)
 
 /**
  * castle-wiki の地図に合わせた城のピン．規模（1〜6）に応じて円の半径を 5.5〜14 dp で変え，
- * 円の中に城のアイコンを白で描く．城名は円の右に，白い縁取りつきで描く．
+ * 規模 5 以上の城だけ，円の中に城のアイコンを白で描く．城名は円の右に，白い縁取りつきで描く．
  */
 class CastlePinRenderer(context: Context) {
     private val density = context.resources.displayMetrics.density
@@ -74,8 +74,8 @@ class CastlePinRenderer(context: Context) {
         canvas.drawCircle(cx, cy, radius + stroke / 2, fillPaint)
         canvas.drawCircle(cx, cy, radius, strokePaint)
 
-        // 円が十分に大きいときだけ，城のアイコンを描く．
-        if (radius >= GLYPH_MIN_RADIUS_DP * density) {
+        // 規模 5 以上の城だけ，円の中に城のアイコンを描く．
+        if (s >= GLYPH_MIN_SCALE) {
             val side = radius * 1.5f
             canvas.save()
             canvas.translate(cx - side / 2, cy - side / 2)
@@ -97,7 +97,7 @@ class CastlePinRenderer(context: Context) {
         const val MIN_RADIUS_DP = 5.5f
         const val MAX_RADIUS_DP = 14f
         const val STROKE_DP = 2f
-        const val GLYPH_MIN_RADIUS_DP = 8f
+        const val GLYPH_MIN_SCALE = 5
         const val LABEL_GAP_DP = 4f
         const val TEXT_DP = 13f
         const val HALO_DP = 2f

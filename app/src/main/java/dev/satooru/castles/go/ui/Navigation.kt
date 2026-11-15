@@ -1,6 +1,15 @@
 package dev.satooru.castles.go.ui
 
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import dev.satooru.castles.go.ui.theme.PrimaryMuted
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -49,25 +58,48 @@ fun CastleGoNavHost(openCastleId: String? = null, onCastleOpened: () -> Unit = {
             onCastleOpened()
         }
     }
-    NavHost(nav, startDestination = Routes.HOME) {
-        composable(Routes.HOME) {
-            val vm: MapViewModel = viewModel(factory = viewModelFactory { initializer { MapViewModel(container) } })
-            MapScreen(
-                vm,
-                onOpenCastle = { nav.navigate(Routes.detail(it)) },
-                onOpenSettings = { nav.navigate(Routes.SETTINGS) },
-            )
-        }
-        composable(Routes.SETTINGS) {
-            SettingsScreen(onBack = { nav.popBackStack() })
-        }
-        composable(Routes.DETAIL, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
-            val id = entry.arguments?.getString("id").orEmpty()
-            val vm: DetailViewModel = viewModel(
-                key = "detail-$id",
-                factory = viewModelFactory { initializer { DetailViewModel(id, container) } },
-            )
-            DetailScreen(vm, onBack = { nav.popBackStack() })
+    // 地図は常に表示したままにし，詳細・設定は上に重ねる．
+    // 別の画面へ遷移するたびに地図を作り直すと，タイルの再読み込みでちらつくため．
+    val mapViewModel: MapViewModel = viewModel(factory = viewModelFactory { initializer { MapViewModel(container) } })
+    Box(Modifier.fillMaxSize()) {
+        MapScreen(
+            mapViewModel,
+            onOpenCastle = { nav.navigate(Routes.detail(it)) },
+            onOpenSettings = { nav.navigate(Routes.SETTINGS) },
+        )
+        NavHost(
+            nav,
+            startDestination = Routes.HOME,
+            enterTransition = { fadeIn(tween(150)) },
+            exitTransition = { fadeOut(tween(150)) },
+            popEnterTransition = { fadeIn(tween(150)) },
+            popExitTransition = { fadeOut(tween(150)) },
+        ) {
+            // 地図そのものは上で表示している．ここは何も重ねない．
+            composable(Routes.HOME) {}
+            composable(Routes.SETTINGS) {
+                OverlayScreen { SettingsScreen(onBack = { nav.popBackStack() }) }
+            }
+            composable(Routes.DETAIL, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
+                val id = entry.arguments?.getString("id").orEmpty()
+                val vm: DetailViewModel = viewModel(
+                    key = "detail-$id",
+                    factory = viewModelFactory { initializer { DetailViewModel(id, container) } },
+                )
+                OverlayScreen { DetailScreen(vm, onBack = { nav.popBackStack() }) }
+            }
         }
     }
+}
+
+/** 地図の上に重ねる画面．背景を塗り，下の地図へ操作が届かないようにする（Surface は操作を受け止める）． */
+@Composable
+private fun OverlayScreen(content: @Composable () -> Unit) {
+    Surface(
+        Modifier.fillMaxSize(),
+        color = PrimaryMuted,
+        // 背景色から文字色が自動で選ばれ，灰色になるのを避ける．
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        content = content,
+    )
 }

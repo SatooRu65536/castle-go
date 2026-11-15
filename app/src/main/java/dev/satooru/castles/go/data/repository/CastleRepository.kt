@@ -16,6 +16,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.math.cos
 
 /** 絞り込みの条件．すべて端末の Room で処理する． */
@@ -131,7 +133,11 @@ class CastleRepository(
      * 詳細を返す．`castle.currentRevisionNumber` とキャッシュの版が一致すれば API を呼ばない．
      * 不一致・未取得のときのみ詳細 API を 1 回呼び，版つきで保存する．
      */
-    suspend fun loadDetail(castleId: String): DetailResult {
+    suspend fun loadDetail(castleId: String): DetailResult = withContext(Dispatchers.Default) {
+        loadDetailInternal(castleId)
+    }
+
+    private suspend fun loadDetailInternal(castleId: String): DetailResult {
         val castle = castleDao.find(castleId)
         val cached = detailDao.find(castleId)
         if (castle != null && cached != null && cached.revisionNumber == castle.currentRevisionNumber) {

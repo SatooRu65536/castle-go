@@ -99,4 +99,17 @@ class DetailFormatTest {
         val blocks = parseMarkdown("```\n## これは見出しではない\n```\n")
         assertEquals(MdBlock.Code("## これは見出しではない"), blocks.single())
     }
+
+    @Test
+    fun markdownIsSplitIntoSectionsAtLevel2Headings() {
+        val sections = dev.satooru.castles.go.ui.common.splitBySections(
+            parseMarkdown("前文\n\n## 概要\n\n本文\n\n### 小見出し\n\n詳細\n\n## 歴史\n\n沿革"),
+        )
+        assertEquals(3, sections.size)
+        assertEquals(MdBlock.Paragraph("前文"), sections[0].single())
+        assertEquals(MdBlock.Heading(2, "概要"), sections[1].first())
+        assertEquals(4, sections[1].size) // 概要・本文・小見出し・詳細
+        assertEquals(MdBlock.Heading(2, "歴史"), sections[2].first())
+        assertTrue(dev.satooru.castles.go.ui.common.splitBySections(emptyList()).isEmpty())
+    }
 }

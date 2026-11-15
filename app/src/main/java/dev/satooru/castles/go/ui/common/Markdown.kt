@@ -2,6 +2,8 @@ package dev.satooru.castles.go.ui.common
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -114,6 +116,16 @@ fun parseMarkdown(markdown: String): List<MdBlock> {
     return blocks
 }
 
+/** レベル 1〜2 の見出しごとに，ブロックの列を分ける（長い解説を，見えている部分だけ組み立てるため）． */
+fun splitBySections(blocks: List<MdBlock>): List<List<MdBlock>> {
+    val sections = mutableListOf<MutableList<MdBlock>>()
+    for (block in blocks) {
+        if (block is MdBlock.Heading && block.level <= 2 || sections.isEmpty()) sections += mutableListOf<MdBlock>()
+        sections.last() += block
+    }
+    return sections
+}
+
 private val INLINE = Regex(
     "`([^`]+)`" +                         // 1: コード
         "|\\[([^\\]]+)]\\(([^)\\s]+)\\)" + // 2,3: リンク
@@ -168,48 +180,62 @@ private fun inlineToAnnotated(text: String): AnnotatedString = buildAnnotatedStr
 /** Markdown を整形して表示する．リンクは押すと外部のブラウザーなどで開く． */
 @Composable
 fun MarkdownText(markdown: String, modifier: Modifier = Modifier) {
-    val blocks = parseMarkdown(markdown)
+    MarkdownBlocks(remember(markdown) { parseMarkdown(markdown) }, modifier)
+}
+
+/** 解析済みのブロックを表示する．解析は画面を開く前に別のスレッドで済ませておける． */
+@Composable
+fun MarkdownBlocks(blocks: List<MdBlock>, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        for (block in blocks) {
-            when (block) {
-                is MdBlock.Heading -> Text(
-                    inlineToAnnotated(block.text),
-                    style = when (block.level) {
-                        1 -> MaterialTheme.typography.titleLarge
-                        2 -> MaterialTheme.typography.titleMedium
-                        else -> MaterialTheme.typography.titleSmall
-                    },
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = if (block.level <= 2) 8.dp else 4.dp),
-                )
-                is MdBlock.Paragraph -> Text(inlineToAnnotated(block.text), style = MaterialTheme.typography.bodyMedium)
-                is MdBlock.ListItem -> Row(Modifier.padding(start = (block.depth * 16).dp)) {
-                    Text(
-                        if (block.ordered) "${block.number}." else "•",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.width(24.dp),
-                    )
-                    Text(inlineToAnnotated(block.text), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                }
-                is MdBlock.Quote -> Row(Modifier.height(IntrinsicSize.Min)) {
-                    androidx.compose.foundation.layout.Box(
-                        Modifier.width(3.dp).fillMaxHeight().background(MaterialTheme.colorScheme.outline),
-                    )
-                    Text(
-                        inlineToAnnotated(block.text),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 12.dp),
-                    )
-                }
-                MdBlock.Rule -> HorizontalDivider()
-                is MdBlock.Code -> Text(
-                    block.text,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
-                    modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(8.dp),
-                )
-            }
+        // ブロックごとに別の Composable にし，変わらないブロックは再描画で飛ばす（現在地の更新ごとの再描画を軽くする）．
+        blocks.forEachIndexed { index, block -> MarkdownBlockView(block, isFirst = index == 0) }
+    }
+}
+
+@Composable
+private fun MarkdownBlockView(block: MdBlock, isFirst: Boolean) {
+    when (block) {
+        is MdBlock.Heading -> Text(
+            remember(block.text) { inlineToAnnotated(block.text) },
+            style = when (block.level) {
+                1 -> MaterialTheme.typography.titleLarge
+                2 -> MaterialTheme.typography.titleMedium
+                else -> MaterialTheme.typography.titleSmall
+            },
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(top = if (isFirst) 0.dp else if (block.level <= 2) 8.dp else 4.dp),
+        )
+        is MdBlock.Paragraph -> Text(
+            remember(block.text) { inlineToAnnotated(block.text) },
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        is MdBlock.ListItem -> Row(Modifier.padding(start = (block.depth * 16).dp)) {
+            Text(
+                if (block.ordered) "${block.number}." else "•",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.width(24.dp),
+            )
+            Text(
+                remember(block.text) { inlineToAnnotated(block.text) },
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
         }
+        is MdBlock.Quote -> Row(Modifier.height(IntrinsicSize.Min)) {
+            Box(Modifier.width(3.dp).fillMaxHeight().background(MaterialTheme.colorScheme.outline))
+            Text(
+                remember(block.text) { inlineToAnnotated(block.text) },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 12.dp),
+            )
+        }
+        MdBlock.Rule -> HorizontalDivider()
+        is MdBlock.Code -> Text(
+            block.text,
+            style = MaterialTheme.typography.bodySmall,
+            fontFamily = FontFamily.Monospace,
+            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(8.dp),
+        )
     }
 }

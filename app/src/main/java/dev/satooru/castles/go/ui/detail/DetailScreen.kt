@@ -15,13 +15,17 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import dev.satooru.castles.go.ui.common.AppCard
-import dev.satooru.castles.go.ui.common.MarkdownText
+import dev.satooru.castles.go.ui.common.MarkdownBlocks
 import dev.satooru.castles.go.ui.theme.Ally
 import dev.satooru.castles.go.ui.common.AppIconButton
 import dev.satooru.castles.go.ui.common.PrimaryButton
 import dev.satooru.castles.go.ui.theme.AllyMuted
 import dev.satooru.castles.go.ui.theme.PrimaryMuted
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import dev.satooru.castles.go.ui.common.MdBlock
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -65,31 +69,41 @@ import kotlinx.serialization.json.contentOrNull
 @Composable
 fun DetailScreen(viewModel: DetailViewModel, onBack: () -> Unit) {
     val castle by viewModel.castle.collectAsStateWithLifecycle()
+    val castleResolved by viewModel.castleResolved.collectAsStateWithLifecycle()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val tags by viewModel.tags.collectAsStateWithLifecycle()
     val location by viewModel.location.collectAsStateWithLifecycle()
 
     Box(Modifier.fillMaxSize().background(PrimaryMuted)) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        // 見えている部分だけを組み立てる（長い解説と属性を最初の 1 フレームで組み立てると，開くときにもたつくため）．
+        LazyColumn(
+            Modifier.fillMaxSize().navigationBarsPadding(),
+            contentPadding = PaddingValues(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             val c = castle
             if (c == null) {
-                Text("この城は端末にありません", Modifier.statusBarsPadding().padding(start = 72.dp, top = 24.dp))
-            } else {
-                if (c.primaryPhotoId != null) {
-                    AsyncImage(
-                        model = PhotoUrl.of(c.primaryPhotoId, 1024),
-                        contentDescription = c.name,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxWidth().height(240.dp),
-                    )
-                } else {
-                    Box(Modifier.statusBarsPadding().height(56.dp))
+                // 城のデータを受け取る前は何も出さない（一瞬「端末にありません」と出るのを避ける）．
+                if (castleResolved) {
+                    item(key = "missing") {
+                        Text("この城は端末にありません", Modifier.statusBarsPadding().padding(start = 72.dp, top = 24.dp))
+                    }
                 }
-                Column(
-                    Modifier.padding(16.dp).navigationBarsPadding(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    AppCard {
+            } else {
+                item(key = "photo") {
+                    if (c.primaryPhotoId != null) {
+                        AsyncImage(
+                            model = PhotoUrl.of(c.primaryPhotoId, 1024),
+                            contentDescription = c.name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxWidth().height(240.dp),
+                        )
+                    } else {
+                        Box(Modifier.statusBarsPadding().height(56.dp))
+                    }
+                }
+                item(key = "info") {
+                    AppCard(Modifier.padding(horizontal = 16.dp)) {
                         Text(c.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
                         if (c.nameKana.isNotEmpty()) {
                             Text(c.nameKana, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -107,15 +121,32 @@ fun DetailScreen(viewModel: DetailViewModel, onBack: () -> Unit) {
                             }
                         }
                     }
-                    NavigationCard(c)
-                    when (val st = state) {
-                        DetailUiState.Loading -> Box(Modifier.fillMaxWidth().padding(16.dp), Alignment.Center) { CircularProgressIndicator() }
-                        DetailUiState.Gone -> AppCard { Text("この城は削除されました") }
-                        DetailUiState.Failed -> AppCard {
+                }
+                item(key = "navigation") { NavigationCard(c, Modifier.padding(horizontal = 16.dp)) }
+                when (val st = state) {
+                    DetailUiState.Loading -> item(key = "loading") {
+                        Box(Modifier.fillMaxWidth().padding(16.dp), Alignment.Center) { CircularProgressIndicator() }
+                    }
+                    DetailUiState.Gone -> item(key = "gone") {
+                        AppCard(Modifier.padding(horizontal = 16.dp)) { Text("この城は削除されました") }
+                    }
+                    DetailUiState.Failed -> item(key = "failed") {
+                        AppCard(Modifier.padding(horizontal = 16.dp)) {
                             Text("詳細を取得できませんでした．通信を確認してください")
                             PrimaryButton("再試行", onClick = viewModel::load)
                         }
-                        is DetailUiState.Loaded -> DetailContent(st.detail)
+                    }
+                    is DetailUiState.Loaded -> {
+                        // 解説は見出しごとのカードに分ける．
+                        itemsIndexed(st.sections, key = { index, _ -> "body-$index" }) { _, blocks ->
+                            val startsWithHeading = blocks.firstOrNull() is MdBlock.Heading
+                            AppCard(Modifier.padding(horizontal = 16.dp), title = if (startsWithHeading) null else "解説") {
+                                MarkdownBlocks(blocks)
+                            }
+                        }
+                        itemsIndexed(st.attributeSections, key = { _, section -> "attr-${section.title}" }) { _, section ->
+                            AttributeSectionCard(section, Modifier.padding(horizontal = 16.dp))
+                        }
                     }
                 }
             }
@@ -129,11 +160,11 @@ fun DetailScreen(viewModel: DetailViewModel, onBack: () -> Unit) {
 
 /** 外部のナビアプリへ目的地を引き継ぐ．移動手段の初期値は設定の既定の移動手段． */
 @Composable
-private fun NavigationCard(c: CastleEntity) {
+private fun NavigationCard(c: CastleEntity, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val container = rememberContainer()
     var mode by remember { mutableStateOf(container.settingsRepository.settings.value.travelMode) }
-    AppCard(title = "ナビ") {
+    AppCard(modifier, title = "ナビ") {
         DropdownField(
             "移動手段", TravelMode.entries.map { it to it.label }, mode,
             { m -> if (m != null) mode = m }, noneLabel = null,
@@ -169,17 +200,12 @@ private fun BasicInfo(c: CastleEntity) {
 }
 
 @Composable
-private fun DetailContent(detail: CastleDetail) {
-    if (detail.body.isNotBlank()) {
-        AppCard(title = "解説") { MarkdownText(detail.body) }
-    }
-    AttributeFormatter.sections(detail.attributes).forEach { section ->
-        AppCard(title = section.title) {
-            section.rows.forEach { row ->
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(row.label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    row.lines.forEach { line -> AttributeLineText(line) }
-                }
+private fun AttributeSectionCard(section: AttributeSection, modifier: Modifier = Modifier) {
+    AppCard(modifier, title = section.title) {
+        section.rows.forEach { row ->
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(row.label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                row.lines.forEach { line -> AttributeLineText(line) }
             }
         }
     }

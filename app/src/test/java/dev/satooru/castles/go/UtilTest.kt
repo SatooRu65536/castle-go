@@ -56,6 +56,7 @@ class UtilTest {
     @Test
     fun minScaleGrowsAsZoomIn() {
         assertEquals(6, MapViewModel.minScaleFor(5f))
-        assertEquals(1, MapViewModel.minScaleFor(14f))
+        assertEquals(2, MapViewModel.minScaleFor(14f))
+        assertEquals(1, MapViewModel.minScaleFor(15f))
     }
 }

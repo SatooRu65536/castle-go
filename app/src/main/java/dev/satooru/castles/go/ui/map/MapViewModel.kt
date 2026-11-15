@@ -96,12 +96,16 @@ class MapViewModel(private val container: AppContainer) : ViewModel() {
 
         /** ズームが小さい（広域）ほど，規模の大きい城のみ描く． */
         fun minScaleFor(zoom: Float): Int = when {
-            zoom < 6f -> 6
-            zoom < 8f -> 5
-            zoom < 9.5f -> 4
-            zoom < 11f -> 3
-            zoom < 12.5f -> 2
-            else -> 1
+            zoom >= 15f -> 1
+            zoom >= 11f -> 2
+            zoom >= 10f -> 3
+            zoom >= 9f -> 4
+            zoom >= 7f -> 5
+            else -> 6
         }
+
+        /** すべての城に城名を出し始めるズーム．これより縮小した地図では規模 4 以上と選択中のみ． */
+        const val ALL_LABELS_MIN_ZOOM = 14f
+        const val LABELED_MIN_SCALE = 4
     }
 }

@@ -15,6 +15,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.key
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,7 +35,7 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberMarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import dev.satooru.castles.go.BuildConfig
 import dev.satooru.castles.go.data.local.CastleEntity
@@ -78,9 +82,10 @@ fun MapScreen(
             camera.move(CameraUpdateFactory.newLatLngZoom(LatLng(here.lat, here.lng), 10f))
         }
     }
-    // カメラの移動が止まったら，表示範囲の城を読み直す．
-    LaunchedEffect(camera.isMoving) {
-        if (camera.isMoving) return@LaunchedEffect
+    var mapLoaded by remember { mutableStateOf(false) }
+    // カメラの移動が止まったとき（`move` のように移動中にならない更新も含む）と，地図の読み込み後に，表示範囲の城を読み直す．
+    LaunchedEffect(camera.isMoving, camera.position, mapLoaded) {
+        if (camera.isMoving || !mapLoaded) return@LaunchedEffect
         val bounds = camera.projection?.visibleRegion?.latLngBounds ?: return@LaunchedEffect
         viewModel.onViewportChanged(
             MapViewport(
@@ -101,14 +106,29 @@ fun MapScreen(
                 myLocationButtonEnabled = false,
                 mapToolbarEnabled = false,
             ),
+            onMapLoaded = { mapLoaded = true },
             onMapClick = { viewModel.select(null) },
         ) {
+            val context = LocalContext.current
+            val renderer = remember { CastlePinRenderer(context) }
+            val showAllLabels by remember { derivedStateOf { camera.position.zoom >= MapViewModel.ALL_LABELS_MIN_ZOOM } }
             castles.forEach { castle ->
-                Marker(
-                    state = MarkerState(LatLng(castle.lat, castle.lng)),
-                    title = castle.name,
-                    onClick = { viewModel.select(castle); false },
-                )
+                key(castle.id) {
+                    val isSelected = castle.id == selected?.id
+                    // 縮小時は規模の大きい城と選択中の城だけに城名を出す（castle-wiki と同じ）．
+                    val label = castle.name.takeIf {
+                        showAllLabels || isSelected || castle.scale >= MapViewModel.LABELED_MIN_SCALE
+                    }
+                    val pin = renderer.image(castle.scale, isSelected, label)
+                    Marker(
+                        state = rememberMarkerState(position = LatLng(castle.lat, castle.lng)),
+                        icon = pin.descriptor,
+                        anchor = Offset(pin.anchorU, 0.5f),
+                        // 規模の大きい城を手前に重ねる．
+                        zIndex = castle.scale + if (isSelected) 10f else 0f,
+                        onClick = { viewModel.select(castle); true },
+                    )
+                }
             }
         }
 

@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import kotlinx.coroutines.flow.map
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.key
@@ -34,6 +35,7 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.CameraMoveStartedReason
+import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
@@ -56,6 +58,11 @@ import kotlinx.coroutines.launch
 
 private val JAPAN_CENTER = LatLng(36.2, 138.2)
 
+// 検知範囲の円．青の薄い塗りと，やや濃い縁．
+private val DETECTION_FILL = androidx.compose.ui.graphics.Color(0x1A007AFF)
+private val DETECTION_STROKE = androidx.compose.ui.graphics.Color(0x99007AFF)
+private const val DETECTION_STROKE_WIDTH_PX = 3f
+
 /** 選択中のピンは，通常のピン（zIndex は規模の 1〜6）より手前に置く． */
 private const val SELECTED_Z_INDEX = 100f
 
@@ -75,6 +82,10 @@ fun MapScreen(
     val castles by viewModel.castles.collectAsStateWithLifecycle()
     val nearby by viewModel.nearby.collectAsStateWithLifecycle()
     val selected by viewModel.selected.collectAsStateWithLifecycle()
+    val settings by container.settingsRepository.settings.collectAsStateWithLifecycle()
+    // 「未訪問のみ」で通知する設定のときだけ，訪問済みの城を検知範囲から除く．
+    val visitedIds by remember { container.visitRepository.observeAll().map { list -> list.map { it.castleId }.toSet() } }
+        .collectAsStateWithLifecycle(emptySet())
     val syncing by viewModel.syncing.collectAsStateWithLifecycle()
     val syncError by viewModel.syncError.collectAsStateWithLifecycle()
     // 詳細画面から戻ったときは，離れたときのカメラの位置から再開する．
@@ -136,6 +147,26 @@ fun MapScreen(
             val context = LocalContext.current
             val renderer = remember { CastlePinRenderer(context) }
             val showAllLabels by remember { derivedStateOf { camera.position.zoom >= MapViewModel.ALL_LABELS_MIN_ZOOM } }
+            // 通知の検知範囲．通知の対象になる城（規模の下限以上，設定によっては未訪問）の周りに，通知する距離の円を描く．
+            if (settings.carNotifyEnabled) {
+                val radiusMeters = settings.carNotifyDistanceKm * 1000
+                castles.forEach { castle ->
+                    val notifiable = castle.scale >= settings.carNotifyMinScale &&
+                        !(settings.carNotifyUnvisitedOnly && castle.id in visitedIds)
+                    if (notifiable) {
+                        key("range-${castle.id}") {
+                            Circle(
+                                center = LatLng(castle.lat, castle.lng),
+                                radius = radiusMeters,
+                                fillColor = DETECTION_FILL,
+                                strokeColor = DETECTION_STROKE,
+                                strokeWidth = DETECTION_STROKE_WIDTH_PX,
+                                zIndex = 0f,
+                            )
+                        }
+                    }
+                }
+            }
             // 通常のピン．選択しても画像を差し替えない（表示中のマーカーの画像を差し替えると，一瞬消えてちらつくことがあるため）．
             castles.forEach { castle ->
                 key(castle.id) {

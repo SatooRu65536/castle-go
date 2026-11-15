@@ -3,7 +3,6 @@ package dev.satooru.castles.go
 import dev.satooru.castles.go.data.repository.DistanceCalculator
 import dev.satooru.castles.go.data.repository.GeoPoint
 import dev.satooru.castles.go.ui.common.Labels
-import dev.satooru.castles.go.ui.detail.attributeText
 import dev.satooru.castles.go.ui.map.MapViewModel
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
@@ -38,19 +37,6 @@ class UtilTest {
     fun distanceFormat() {
         assertEquals("350 m", Labels.distance(350.4))
         assertEquals("1.2 km", Labels.distance(1234.0))
-    }
-
-    @Test
-    fun attributeTextHandlesKnownUnknownAndYear() {
-        val json = Json.parseToJsonElement(
-            """{"a":{"state":"known","value":"石垣"},"b":{"state":"unknown"},""" +
-                """"c":{"state":"known","value":{"year":1612,"precision":"year","label":"1612年"}},""" +
-                """"d":{"state":"known","value":["x","y"]}}""",
-        ) as kotlinx.serialization.json.JsonObject
-        assertEquals("石垣", attributeText(json["a"]!!))
-        assertEquals("不明", attributeText(json["b"]!!))
-        assertEquals("1612年", attributeText(json["c"]!!))
-        assertEquals("x，y", attributeText(json["d"]!!))
     }
 
     @Test

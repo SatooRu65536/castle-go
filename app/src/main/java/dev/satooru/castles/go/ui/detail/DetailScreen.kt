@@ -8,7 +8,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import dev.satooru.castles.go.ui.common.AppCard
+import dev.satooru.castles.go.ui.common.MarkdownText
+import dev.satooru.castles.go.ui.theme.Ally
 import dev.satooru.castles.go.ui.common.AppIconButton
 import dev.satooru.castles.go.ui.common.PrimaryButton
 import dev.satooru.castles.go.ui.theme.AllyMuted
@@ -163,45 +171,32 @@ private fun BasicInfo(c: CastleEntity) {
 @Composable
 private fun DetailContent(detail: CastleDetail) {
     if (detail.body.isNotBlank()) {
-        AppCard(title = "解説") { Text(detail.body, style = MaterialTheme.typography.bodyMedium) }
+        AppCard(title = "解説") { MarkdownText(detail.body) }
     }
-    val attrs = detail.attributes
-        .filterKeys { it !in HIDDEN_ATTRIBUTES }
-        .mapNotNull { (key, value) -> attributeText(value)?.let { (ATTRIBUTE_LABELS[key] ?: key) to it } }
-    if (attrs.isNotEmpty()) {
-        AppCard(title = "属性") {
-            attrs.forEach { (k, v) ->
-                Row { Text(k, Modifier.padding(end = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant); Text(v) }
+    AttributeFormatter.sections(detail.attributes).forEach { section ->
+        AppCard(title = section.title) {
+            section.rows.forEach { row ->
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(row.label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    row.lines.forEach { line -> AttributeLineText(line) }
+                }
             }
         }
     }
 }
 
-/** 基本情報として別に表示している属性は，属性の一覧から除く． */
-private val HIDDEN_ATTRIBUTES = setOf(
-    "name", "nameKana", "lat", "lng", "scale", "castleKind", "locationType", "prefecture", "tenshuStatus",
-    "meijoSelection", "meijoNumber",
-)
-
-private val ATTRIBUTE_LABELS = mapOf(
-    "city" to "市区町村", "addressDetail" to "住所", "builtYear" to "築城年", "builders" to "築城主",
-    "abandonedYear" to "廃城年", "lords" to "城主", "remains" to "遺構", "sources" to "出典",
-)
-
-/** `{ "state": "known", "value": ... }` を文字列にする．不明は「不明」，読めない形は NULL． */
-internal fun attributeText(element: JsonElement): String? {
-    val obj = element as? JsonObject ?: return null
-    return when ((obj["state"] as? JsonPrimitive)?.contentOrNull) {
-        "unknown" -> "不明"
-        "known" -> obj["value"]?.let(::valueText)
-        else -> null
+@Composable
+private fun AttributeLineText(line: AttributeLine) {
+    if (line.url == null) {
+        Text(line.text, style = MaterialTheme.typography.bodyMedium)
+    } else {
+        Text(
+            buildAnnotatedString {
+                withLink(
+                    LinkAnnotation.Url(line.url, TextLinkStyles(SpanStyle(color = Ally, textDecoration = TextDecoration.Underline))),
+                ) { append(line.text) }
+            },
+            style = MaterialTheme.typography.bodyMedium,
+        )
     }
-}
-
-private fun valueText(v: JsonElement): String? = when (v) {
-    is JsonNull -> null
-    is JsonPrimitive -> v.contentOrNull
-    is JsonArray -> v.mapNotNull(::valueText).joinToString("，")
-    is JsonObject -> (v["label"] as? JsonPrimitive)?.contentOrNull
-        ?: v.values.mapNotNull(::valueText).joinToString(" ")
 }

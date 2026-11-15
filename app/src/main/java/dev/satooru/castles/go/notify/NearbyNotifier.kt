@@ -33,14 +33,56 @@ import dev.satooru.castles.go.ui.common.Labels
  */
 class NearbyNotifier(private val context: Context, private val container: AppContainer) {
     private val notifiedDao = container.database.notifiedCastleDao()
+    private val prefs = context.getSharedPreferences("nearby_suppressed", Context.MODE_PRIVATE)
+    private var appOpenHandled = false
+
+    /** 通知しない城の ID．範囲の外へ出たら外す． */
+    private fun suppressedIds(): Set<String> = prefs.getStringSet(KEY_SUPPRESSED, emptySet()).orEmpty().toSet()
+
+    /** すでに範囲内にいる城を，範囲の外へ出るまで通知しない対象にする． */
+    fun suppress(ids: Collection<String>) {
+        if (ids.isEmpty()) return
+        prefs.edit().putStringSet(KEY_SUPPRESSED, suppressedIds() + ids).apply()
+    }
+
+    /** 範囲の外へ出た城を，通知の対象に戻す． */
+    fun release(ids: Collection<String>) {
+        val current = suppressedIds()
+        if (current.none { it in ids }) return
+        prefs.edit().putStringSet(KEY_SUPPRESSED, current - ids.toSet()).apply()
+    }
+
+    /** アプリを開いた時点（プロセスごとに最初の現在地）で範囲内にある城を，範囲の外へ出るまで通知しない． */
+    suspend fun onAppOpened(here: GeoPoint) {
+        if (appOpenHandled) return
+        appOpenHandled = true
+        val inRange = inRangeIds(here)
+        suppress(inRange)
+    }
+
+    private suspend fun inRangeIds(here: GeoPoint): Set<String> {
+        val settings = container.settingsRepository.settings.value
+        return container.castleRepository.nearby(
+            origin = here,
+            filter = CastleFilter(),
+            limit = 200,
+            radiusKm = settings.carNotifyDistanceKm,
+        ).map { it.castle.id }.toSet()
+    }
 
     /** 現在地から通知する距離以内に，条件に合う城があれば通知する． */
     suspend fun notifyIfNear(here: GeoPoint) {
         val settings = container.settingsRepository.settings.value
         if (!settings.carNotifyEnabled) return
         val now = System.currentTimeMillis()
+        // 範囲の外へ出た城は，通知の対象に戻す．
+        val suppressed = suppressedIds()
+        if (suppressed.isNotEmpty()) {
+            val inRange = inRangeIds(here)
+            release(suppressed.filter { it !in inRange })
+        }
         if (!canNotify(now)) return
-        val already = notifiedDao.notifiedSince(now - SAME_CASTLE_MILLIS).toSet()
+        val already = notifiedDao.notifiedSince(now - SAME_CASTLE_MILLIS).toSet() + suppressedIds()
         val target = container.castleRepository.nearby(
             origin = here,
             filter = CastleFilter(minScale = settings.carNotifyMinScale, unvisitedOnly = settings.carNotifyUnvisitedOnly),
@@ -56,7 +98,7 @@ class NearbyNotifier(private val context: Context, private val container: AppCon
         if (!settings.carNotifyEnabled || !settings.backgroundNotifyEnabled) return
         val now = System.currentTimeMillis()
         if (!canNotify(now)) return
-        val already = notifiedDao.notifiedSince(now - SAME_CASTLE_MILLIS).toSet()
+        val already = notifiedDao.notifiedSince(now - SAME_CASTLE_MILLIS).toSet() + suppressedIds()
         for (id in castleIds) {
             if (id in already) continue
             val castle = container.castleRepository.findCastle(id) ?: continue
@@ -122,6 +164,7 @@ class NearbyNotifier(private val context: Context, private val container: AppCon
     companion object {
         const val CHANNEL_ID = "nearby_castle"
         private const val NOTIFICATION_ID = 1001
+        private const val KEY_SUPPRESSED = "ids"
         private const val MIN_INTERVAL_MILLIS = 10L * 60 * 1000
         private const val SAME_CASTLE_MILLIS = 24L * 60 * 60 * 1000
 

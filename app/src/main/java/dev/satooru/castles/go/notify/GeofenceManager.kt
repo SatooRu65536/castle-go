@@ -70,12 +70,14 @@ class GeofenceManager(private val context: Context, private val container: AppCo
             radiusKm = null,
         )
         val radius = max(MIN_RADIUS_METERS, (settings.carNotifyDistanceKm * 1000).toFloat())
+        // 登録の時点ですでに範囲内にある城は，Geofence が入った扱いで通知しないよう，範囲の外へ出るまで抑える．
+        container.nearbyNotifier.suppress(castles.filter { it.distanceMeters <= radius }.map { it.castle.id })
         val fences = castles.map {
             Geofence.Builder()
                 .setRequestId(it.castle.id)
                 .setCircularRegion(it.castle.lat, it.castle.lng, radius)
                 .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
+                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
                 .build()
         } + Geofence.Builder()
             .setRequestId(REFRESH_ID)

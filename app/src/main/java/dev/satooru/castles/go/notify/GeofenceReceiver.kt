@@ -25,8 +25,10 @@ class GeofenceReceiver : BroadcastReceiver() {
                 when (event.geofenceTransition) {
                     Geofence.GEOFENCE_TRANSITION_ENTER ->
                         container.nearbyNotifier.notifyEntered(ids.filter { it != GeofenceManager.REFRESH_ID }, here)
-                    Geofence.GEOFENCE_TRANSITION_EXIT ->
+                    Geofence.GEOFENCE_TRANSITION_EXIT -> {
+                        container.nearbyNotifier.release(ids.filter { it != GeofenceManager.REFRESH_ID })
                         if (GeofenceManager.REFRESH_ID in ids) container.geofenceManager.refresh(here)
+                    }
                 }
             } finally {
                 pending.finish()

@@ -37,6 +37,7 @@ fun CastleGoNavHost(openCastleId: String? = null, onCastleOpened: () -> Unit = {
     LaunchedEffect(location) {
         val here = location ?: return@LaunchedEffect
         runCatching {
+            container.nearbyNotifier.onAppOpened(here)
             container.nearbyNotifier.notifyIfNear(here)
             container.geofenceManager.refreshIfMoved(here)
         }

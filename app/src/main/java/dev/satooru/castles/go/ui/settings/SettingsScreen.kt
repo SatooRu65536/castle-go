@@ -56,6 +56,8 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val container = rememberContainer()
     val settings by container.settingsRepository.settings.collectAsStateWithLifecycle()
     val syncState by container.syncRepository.observeState().collectAsStateWithLifecycle(null)
+    // 端末に登録されている城の件数（削除済みは含まない）．同期で増減する．
+    val castleCount by container.castleRepository.observeCount().collectAsStateWithLifecycle(0)
     val scope = rememberCoroutineScope()
     var status by remember { mutableStateOf<String?>(null) }
     val update = container.settingsRepository::update
@@ -164,6 +166,7 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             }
 
             AppCard(title = "同期") {
+                Text("登録されている城: ${String.format(Locale.JAPAN, "%,d", castleCount)} 件")
                 Text(
                     "最終同期: " + (syncState?.lastSyncedAt?.let {
                         SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.JAPAN).format(Date(it))

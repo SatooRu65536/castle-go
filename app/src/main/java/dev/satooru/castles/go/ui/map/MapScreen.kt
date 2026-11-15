@@ -56,6 +56,9 @@ import kotlinx.coroutines.launch
 
 private val JAPAN_CENTER = LatLng(36.2, 138.2)
 
+/** 選択中のピンは，通常のピン（zIndex は規模の 1〜6）より手前に置く． */
+private const val SELECTED_Z_INDEX = 100f
+
 /**
  * 最初に表示する画面．全画面の地図に，現在地に近い城 3 件（距離つき）を左上に重ねる．
  * 距離のチップを押すとその城へ移動し，マーカーを選ぶと概要を表示して詳細へ進める．
@@ -133,21 +136,32 @@ fun MapScreen(
             val context = LocalContext.current
             val renderer = remember { CastlePinRenderer(context) }
             val showAllLabels by remember { derivedStateOf { camera.position.zoom >= MapViewModel.ALL_LABELS_MIN_ZOOM } }
+            // 通常のピン．選択しても画像を差し替えない（表示中のマーカーの画像を差し替えると，一瞬消えてちらつくことがあるため）．
             castles.forEach { castle ->
                 key(castle.id) {
-                    val isSelected = castle.id == selected?.id
-                    // 縮小時は規模の大きい城と選択中の城だけに城名を出す（castle-wiki と同じ）．
-                    val label = castle.name.takeIf {
-                        showAllLabels || isSelected || castle.scale >= MapViewModel.LABELED_MIN_SCALE
-                    }
-                    val pin = renderer.image(castle.scale, isSelected, label)
+                    // 縮小時は規模の大きい城だけに城名を出す（castle-wiki と同じ）．
+                    val label = castle.name.takeIf { showAllLabels || castle.scale >= MapViewModel.LABELED_MIN_SCALE }
+                    val pin = renderer.image(castle.scale, false, label)
                     Marker(
                         state = rememberMarkerState(position = LatLng(castle.lat, castle.lng)),
                         icon = pin.descriptor,
                         anchor = Offset(pin.anchorU, 0.5f),
                         // 規模の大きい城を手前に重ねる．
-                        zIndex = castle.scale + if (isSelected) 10f else 0f,
+                        zIndex = castle.scale.toFloat(),
                         onClick = { viewModel.select(castle); true },
+                    )
+                }
+            }
+            // 選択中のピン．通常のピンの上に別のマーカーとして重ね，赤い円と城名を出す．
+            selected?.let { castle ->
+                key("selected-${castle.id}") {
+                    val pin = renderer.image(castle.scale, true, castle.name)
+                    Marker(
+                        state = rememberMarkerState(position = LatLng(castle.lat, castle.lng)),
+                        icon = pin.descriptor,
+                        anchor = Offset(pin.anchorU, 0.5f),
+                        zIndex = SELECTED_Z_INDEX,
+                        onClick = { true },
                     )
                 }
             }

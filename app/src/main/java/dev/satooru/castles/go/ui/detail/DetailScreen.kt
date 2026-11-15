@@ -27,6 +27,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import dev.satooru.castles.go.navigation.ExternalNavigation
+import dev.satooru.castles.go.settings.TravelMode
+import dev.satooru.castles.go.ui.common.DropdownField
+import dev.satooru.castles.go.ui.common.rememberContainer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -91,6 +99,7 @@ fun DetailScreen(viewModel: DetailViewModel, onBack: () -> Unit) {
                             }
                         }
                     }
+                    NavigationCard(c)
                     when (val st = state) {
                         DetailUiState.Loading -> Box(Modifier.fillMaxWidth().padding(16.dp), Alignment.Center) { CircularProgressIndicator() }
                         DetailUiState.Gone -> AppCard { Text("この城は削除されました") }
@@ -107,6 +116,21 @@ fun DetailScreen(viewModel: DetailViewModel, onBack: () -> Unit) {
             Icons.AutoMirrored.Filled.ArrowBack, "戻る", onBack,
             Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 16.dp, top = 12.dp),
         )
+    }
+}
+
+/** 外部のナビアプリへ目的地を引き継ぐ．移動手段の初期値は設定の既定の移動手段． */
+@Composable
+private fun NavigationCard(c: CastleEntity) {
+    val context = LocalContext.current
+    val container = rememberContainer()
+    var mode by remember { mutableStateOf(container.settingsRepository.settings.value.travelMode) }
+    AppCard(title = "ナビ") {
+        DropdownField(
+            "移動手段", TravelMode.entries.map { it to it.label }, mode,
+            { m -> if (m != null) mode = m }, noneLabel = null,
+        )
+        PrimaryButton("ナビを開く", onClick = { ExternalNavigation.start(context, c.lat, c.lng, mode) })
     }
 }
 

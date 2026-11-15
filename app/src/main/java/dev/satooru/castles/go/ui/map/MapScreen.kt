@@ -37,6 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
 import com.google.maps.android.compose.CameraMoveStartedReason
 import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
@@ -60,6 +61,12 @@ import dev.satooru.castles.go.ui.common.rememberContainer
 import kotlinx.coroutines.launch
 
 private val JAPAN_CENTER = LatLng(36.2, 138.2)
+
+/** 地図の表示できる範囲．日本（与那国島から択捉島まで）と韓国が収まる（castle-wiki の `MAX_BOUNDS` と同じ）． */
+private val JAPAN_KOREA_BOUNDS = LatLngBounds(LatLng(24.0, 122.0), LatLng(46.0, 154.0))
+
+/** 縮小の下限．日本と韓国の範囲の横幅（32°）が画面に収まる大きさ． */
+private const val MIN_ZOOM = 4f
 
 // 検知範囲の円．青の薄い塗りと，やや濃い縁．
 private val DETECTION_FILL = androidx.compose.ui.graphics.Color(0x0D007AFF)
@@ -146,7 +153,12 @@ fun MapScreen(
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = camera,
-            properties = MapProperties(isMyLocationEnabled = container.locationRepository.hasPermission() && location != null),
+            properties = MapProperties(
+                isMyLocationEnabled = container.locationRepository.hasPermission() && location != null,
+                // カメラの中心が，日本と韓国の範囲の外へ出ないようにし，世界全体まで縮小できないようにする．
+                latLngBoundsForCameraTarget = JAPAN_KOREA_BOUNDS,
+                minZoomPreference = MIN_ZOOM,
+            ),
             uiSettings = MapUiSettings(
                 zoomControlsEnabled = false,
                 myLocationButtonEnabled = false,

@@ -61,8 +61,8 @@ import kotlinx.coroutines.launch
 private val JAPAN_CENTER = LatLng(36.2, 138.2)
 
 // 検知範囲の円．青の薄い塗りと，やや濃い縁．
-private val DETECTION_FILL = androidx.compose.ui.graphics.Color(0x1A007AFF)
-private val DETECTION_STROKE = androidx.compose.ui.graphics.Color(0x99007AFF)
+private val DETECTION_FILL = androidx.compose.ui.graphics.Color(0x0D007AFF)
+private val DETECTION_STROKE = androidx.compose.ui.graphics.Color(0x55007AFF)
 private const val DETECTION_STROKE_WIDTH_PX = 3f
 
 /** 選択中のピンは，通常のピン（zIndex は規模の 1〜6）より手前に置く． */

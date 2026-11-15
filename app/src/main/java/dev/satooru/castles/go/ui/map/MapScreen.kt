@@ -173,7 +173,13 @@ fun MapScreen(
                         anchor = Offset(pin.anchorU, 0.5f),
                         // 規模の大きい城を手前に重ねる．
                         zIndex = castle.scale.toFloat(),
-                        onClick = { viewModel.select(castle); true },
+                        onClick = {
+                            viewModel.select(castle)
+                            // 選んだ城を画面の中央に置く（ズームは変えない）．
+                            following = false
+                            scope.launch { camera.animate(CameraUpdateFactory.newLatLng(LatLng(castle.lat, castle.lng))) }
+                            true
+                        },
                     )
                 }
             }
@@ -283,14 +289,14 @@ private fun SelectedCastleCard(castle: CastleEntity, location: GeoPoint?, onOpen
 /** 画面の中央を示す小さな十字．地図の上でも見えるよう，白い縁取りをつける． */
 @Composable
 private fun CenterCrosshair(modifier: Modifier = Modifier) {
-    Canvas(modifier.size(24.dp)) {
+    Canvas(modifier.size(16.dp)) {
         val half = size.width / 2
         val center = Offset(half, half)
         fun cross(color: androidx.compose.ui.graphics.Color, width: Float) {
             drawLine(color, Offset(center.x - half, center.y), Offset(center.x + half, center.y), strokeWidth = width, cap = StrokeCap.Round)
             drawLine(color, Offset(center.x, center.y - half), Offset(center.x, center.y + half), strokeWidth = width, cap = StrokeCap.Round)
         }
-        cross(androidx.compose.ui.graphics.Color.White, 5.dp.toPx())
-        cross(androidx.compose.ui.graphics.Color(0xFF1C1917), 2.dp.toPx())
+        cross(androidx.compose.ui.graphics.Color.White, 4.dp.toPx())
+        cross(androidx.compose.ui.graphics.Color(0xFF1C1917), 1.5.dp.toPx())
     }
 }

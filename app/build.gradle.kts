@@ -26,7 +26,7 @@ android {
             val file = rootProject.file("local.properties")
             if (file.exists()) file.inputStream().use { load(it) }
         }
-        val apiBaseUrl = props.getProperty("castleWiki.apiBaseUrl") ?: "https://castle-wiki.example.com/"
+        val apiBaseUrl = props.getProperty("castleWiki.apiBaseUrl") ?: "https://api.castles.satooru.dev/"
         val mapsApiKey = props.getProperty("MAPS_API_KEY") ?: ""
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
         manifestPlaceholders["mapsApiKey"] = mapsApiKey

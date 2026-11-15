@@ -5,6 +5,7 @@
 アプリ全体の方針は [企画案](proposal.md) に従う．
 
 wiki 側に次の API を要望する．パス・名前は例であり，確定後に本書を更新すること．
+ベース URL は `https://api.castles.satooru.dev/` とする．アプリは `local.properties` の `castleWiki.apiBaseUrl` で上書きできる．
 アプリはデータの閲覧のみのため，すべて読み取り専用の `GET` とする．ログインは不要とする．
 
 ## エンドポイント一覧

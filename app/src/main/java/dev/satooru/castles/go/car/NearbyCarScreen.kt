@@ -133,7 +133,7 @@ class NearbyCarScreen(carContext: CarContext, private val container: AppContaine
             .addText(
                 listOfNotNull(
                     Labels.distance(n.distanceMeters),
-                    Labels.prefecture(c.prefecture),
+                    Labels.area(c.country, c.prefecture, c.region),
                     Labels.tenshuStatus(c.tenshuStatus)?.let { "天守: $it" },
                 ).joinToString(" ・ "),
             )

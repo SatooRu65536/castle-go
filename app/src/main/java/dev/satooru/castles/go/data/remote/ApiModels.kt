@@ -17,6 +17,10 @@ data class CastleDto(
     val scale: Int,
     val castleKind: String? = null,
     val locationType: String? = null,
+    /** 国．`JP`（日本）か `KR`（韓国）．API が返さない場合は日本 */
+    val country: String = "JP",
+    /** 韓国の市・道のコード（例：`11`）．日本の城では NULL */
+    val region: String? = null,
     val prefecture: String? = null,
     val tenshuStatus: String? = null,
     val meijoSelection: String? = null,

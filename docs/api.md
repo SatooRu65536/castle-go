@@ -49,6 +49,8 @@ GET /sync/castles?cursor=<カーソル>&limit=1000
       "scale": 6,
       "castleKind": "castle",
       "locationType": "hirajiro",
+      "country": "JP",
+      "region": null,
       "prefecture": "23",
       "tenshuStatus": "exterior_restoration",
       "meijoSelection": "top100",
@@ -67,8 +69,11 @@ GET /sync/castles?cursor=<カーソル>&limit=1000
 | 項目 | 内容 |
 | ---- | ---- |
 | 列の元 | wiki の `castles` テーブルの写し列．JSON のキーは camelCase |
-| 含めない列 | `is_protected`，`created_at`，`country`，`region` |
-| 対象の国 | 日本（`country = 'JP'`）の城のみ．韓国の城は同期に含めない |
+| 含めない列 | `is_protected`，`created_at` |
+| 対象の国 | 日本（`JP`）と韓国（`KR`）の城．`country` で区別する |
+| `country` | 国．`JP` または `KR`．キーがない場合は端末が日本として扱う |
+| `region` | 韓国の市・道のコード（ISO 3166-2:KR の数字部分．例：`11`）．日本の城では NULL |
+| `prefecture` | 日本の城のみ．韓国の城では NULL |
 | 削除 | `deletedAt` が NULL でない行．端末は該当の城を削除済みとして扱う |
 | 復元 | 同じ ID が `deletedAt: null` で再び届く |
 | `hasMore` | `true` の間，`nextCursor` で続きを取得する |

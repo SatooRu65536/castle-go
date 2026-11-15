@@ -318,7 +318,7 @@ private fun SelectedCastleCard(castle: CastleEntity, location: GeoPoint?, onOpen
             Text(
                 listOfNotNull(
                     location?.let { Labels.distance(DistanceCalculator.meters(it, GeoPoint(castle.lat, castle.lng))) },
-                    Labels.prefecture(castle.prefecture),
+                    Labels.area(castle.country, castle.prefecture, castle.region),
                     Labels.tenshuStatus(castle.tenshuStatus)?.let { "天守: $it" },
                 ).joinToString(" ・ "),
                 style = MaterialTheme.typography.bodySmall,

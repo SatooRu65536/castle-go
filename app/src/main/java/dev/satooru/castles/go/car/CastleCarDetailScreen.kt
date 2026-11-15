@@ -41,7 +41,9 @@ class CastleCarDetailScreen(
             return PaneTemplate.Builder(pane.build()).setTitle("城の情報").setHeaderAction(Action.BACK).build()
         }
         if (c.nameKana.isNotEmpty()) pane.addRow(Row.Builder().setTitle("読み仮名").addText(c.nameKana).build())
-        Labels.prefecture(c.prefecture)?.let { pane.addRow(Row.Builder().setTitle("都道府県").addText(it).build()) }
+        Labels.area(c.country, c.prefecture, c.region)?.let {
+            pane.addRow(Row.Builder().setTitle(if (c.country == "JP") "都道府県" else "所在地").addText(it).build())
+        }
         Labels.tenshuStatus(c.tenshuStatus)?.let { pane.addRow(Row.Builder().setTitle("天守").addText(it).build()) }
         c.meijoNumber?.let {
             pane.addRow(

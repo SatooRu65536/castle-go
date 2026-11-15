@@ -185,7 +185,9 @@ private fun TagChip(name: String) {
 @Composable
 private fun BasicInfo(c: CastleEntity) {
     val rows = listOfNotNull(
-        Labels.prefecture(c.prefecture)?.let { "都道府県" to it },
+        if (c.country == "JP") Labels.prefecture(c.prefecture)?.let { "都道府県" to it }
+        else Labels.country(c.country)?.let { "国" to it },
+        if (c.country != "JP") Labels.koreaRegion(c.region)?.let { "市・道" to it } else null,
         "規模" to "${c.scale}",
         Labels.castleKind(c.castleKind)?.let { "城の種別" to it },
         Labels.locationType(c.locationType)?.let { "立地" to it },

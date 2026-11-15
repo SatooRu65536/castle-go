@@ -1,5 +1,6 @@
 package dev.satooru.castles.go.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -26,6 +27,10 @@ data class CastleEntity(
     val scale: Int,
     val castleKind: String?,
     val locationType: String?,
+    /** 国（`JP`・`KR`）．既存の行は日本 */
+    @ColumnInfo(defaultValue = "'JP'") val country: String = "JP",
+    /** 韓国の市・道のコード．日本の城では NULL */
+    val region: String? = null,
     val prefecture: String?,
     val tenshuStatus: String?,
     val meijoSelection: String?,

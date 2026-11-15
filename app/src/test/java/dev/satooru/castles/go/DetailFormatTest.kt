@@ -112,4 +112,21 @@ class DetailFormatTest {
         assertEquals(MdBlock.Heading(2, "歴史"), sections[2].first())
         assertTrue(dev.satooru.castles.go.ui.common.splitBySections(emptyList()).isEmpty())
     }
+
+    @Test
+    fun areaShowsPrefectureForJapanAndCountryAndRegionForKorea() {
+        assertEquals("愛知県", dev.satooru.castles.go.ui.common.Labels.area("JP", "23", null))
+        assertEquals("韓国 ・ 釜山広域市", dev.satooru.castles.go.ui.common.Labels.area("KR", null, "26"))
+        assertEquals("韓国 ・ 99", dev.satooru.castles.go.ui.common.Labels.area("KR", null, "99")) // 未知の市・道はコードのまま
+        assertEquals("韓国", dev.satooru.castles.go.ui.common.Labels.area("KR", null, null))
+    }
+
+    @Test
+    fun countryAndRegionAreShownInTheLocationSection() {
+        val rows = AttributeFormatter.sections(
+            attributes("""{"country":{"state":"known","value":"KR"},"region":{"state":"known","value":"48"},"addressDetail":{"state":"known","value":"鎮海区"}}"""),
+        ).single { it.title == "所在地" }.rows.associate { it.label to it.lines.single().text }
+        assertEquals("韓国", rows["国"])
+        assertEquals("慶尚南道", rows["市・道"])
+    }
 }

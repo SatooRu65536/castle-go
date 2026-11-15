@@ -24,7 +24,7 @@ object AttributeFormatter {
     // 画面の上部の基本情報（都道府県・規模・種別・立地・天守の状態・名城の選定）と，タグ・位置は，ここでは出さない．
     private val SECTIONS: List<Pair<String, List<String>>> = listOf(
         "基本情報" to listOf("aliases", "nawabari", "culturalProperties"),
-        "所在地" to listOf("city", "addressDetail", "postalCode", "elevation", "relativeHeight"),
+        "所在地" to listOf("country", "region", "city", "addressDetail", "postalCode", "elevation", "relativeHeight"),
         "歴史" to listOf(
             "builtYear", "builders", "renovations", "abandonedYear", "abandonmentReason", "lords", "han", "events",
         ),
@@ -35,7 +35,7 @@ object AttributeFormatter {
 
     private val LABELS = mapOf(
         "aliases" to "別名", "nawabari" to "縄張り", "culturalProperties" to "文化財指定",
-        "city" to "市区町村", "addressDetail" to "住所以下", "postalCode" to "郵便番号",
+        "country" to "国", "region" to "市・道", "city" to "市区町村", "addressDetail" to "住所以下", "postalCode" to "郵便番号",
         "elevation" to "標高", "relativeHeight" to "比高",
         "builtYear" to "築城年", "builders" to "築城者", "renovations" to "主な改修", "abandonedYear" to "廃城年",
         "abandonmentReason" to "廃城の理由", "lords" to "歴代城主", "han" to "藩", "events" to "主な出来事",
@@ -44,6 +44,14 @@ object AttributeFormatter {
         "remains" to "遺構", "formerStructures" to "元々あった構造物", "sources" to "出典", "links" to "関連リンク",
     )
 
+    private val COUNTRY = mapOf("JP" to "日本", "KR" to "韓国")
+    private val KOREA_REGION = mapOf(
+        "11" to "ソウル特別市", "26" to "釜山広域市", "27" to "大邱広域市", "28" to "仁川広域市",
+        "29" to "光州広域市", "30" to "大田広域市", "31" to "蔚山広域市", "50" to "世宗特別自治市",
+        "41" to "京畿道", "42" to "江原特別自治道", "43" to "忠清北道", "44" to "忠清南道",
+        "45" to "全北特別自治道", "46" to "全羅南道", "47" to "慶尚北道", "48" to "慶尚南道",
+        "49" to "済州特別自治道",
+    )
     private val NAWABARI = mapOf(
         "rinkaku" to "輪郭式", "teikaku" to "梯郭式", "renkaku" to "連郭式", "kankaku" to "環郭式",
         "heikaku" to "並郭式", "other" to "その他",
@@ -102,6 +110,8 @@ object AttributeFormatter {
     private fun format(key: String, value: JsonElement?): List<AttributeLine> = when (key) {
         "aliases" -> lines(value.items().mapNotNull { it.text() }.joinToString("，"))
         "nawabari" -> lines(enumLabel(NAWABARI, value.text()))
+        "country" -> lines(enumLabel(COUNTRY, value.text()))
+        "region" -> lines(enumLabel(KOREA_REGION, value.text()))
         "culturalProperties" -> lines(
             *value.items().map { joinNonEmpty(listOf(enumLabel(CULTURAL_PROPERTY, it.field("kind")), it.field("target")), "：") }.toTypedArray(),
         )

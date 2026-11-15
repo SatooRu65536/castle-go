@@ -77,6 +77,7 @@ castle-wiki API ──(差分同期)──> Room（ミラー） ──> スマ�
 | `name`，`name_kana`，`search_text` | 表示，読み仮名順，検索 |
 | `lat`，`lng` | 地図，距離，ナビゲーション |
 | `scale`，`castle_kind`，`location_type` | 絞り込み，ズーム別の間引き |
+| `country`，`region` | 国（日本・韓国）の判別，韓国の市・道の表示 |
 | `prefecture`，`tenshu_status` | 絞り込み，車載の基本情報 |
 | `meijo_selection`，`meijo_number` | 名城の選定の判定，番号の表示，絞り込み |
 | `primary_photo_id` | 代表写真 |
@@ -92,7 +93,9 @@ castle-wiki API ──(差分同期)──> Room（ミラー） ──> スマ�
 | `scale` | 整数 | 規模（1〜6） |
 | `castle_kind` | 文字列，NULL 可 | 城の種別．`castle`（城），`jinya`（陣屋），`fort`（砦），`yakata`（館），`gusuku`（グスク），`chashi`（チャシ），`other`（その他） |
 | `location_type` | 文字列，NULL 可 | 立地．`yamajiro`（山城），`hirayamajiro`（平山城），`hirajiro`（平城），`mizujiro`（水城） |
-| `prefecture` | 文字列，NULL 可 | 都道府県．JIS X 0401 のコード（`01`〜`47`） |
+| `country` | 文字列 | 国．`JP`（日本），`KR`（韓国）．初期値は `JP` |
+| `region` | 文字列，NULL 可 | 韓国の市・道．ISO 3166-2:KR の数字部分（例：`11`）．日本の城では NULL |
+| `prefecture` | 文字列，NULL 可 | 都道府県．JIS X 0401 のコード（`01`〜`47`）．韓国の城では NULL |
 | `tenshu_status` | 文字列，NULL 可 | 天守の状態．`existing`（現存），`wooden_restoration`（木造復元），`exterior_restoration`（外観復元），`revival`（復興），`mock`（模擬） |
 | `meijo_selection` | 文字列，NULL 可 | 名城の選定．`top100`（日本100名城），`continued_top100`（続日本100名城） |
 | `meijo_number` | 整数，NULL 可 | 名城の選定の番号．`meijo_selection` と同時に NULL または値あり |

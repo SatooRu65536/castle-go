@@ -31,6 +31,28 @@ object Labels {
         "top100" to "日本100名城", "continued_top100" to "続日本100名城",
     )
 
+    val countries: List<Pair<String, String>> = listOf("JP" to "日本", "KR" to "韓国")
+
+    /** 韓国の市・道．ISO 3166-2:KR の数字部分 */
+    val koreaRegions: List<Pair<String, String>> = listOf(
+        "11" to "ソウル特別市", "26" to "釜山広域市", "27" to "大邱広域市", "28" to "仁川広域市",
+        "29" to "光州広域市", "30" to "大田広域市", "31" to "蔚山広域市", "50" to "世宗特別自治市",
+        "41" to "京畿道", "42" to "江原特別自治道", "43" to "忠清北道", "44" to "忠清南道",
+        "45" to "全北特別自治道", "46" to "全羅南道", "47" to "慶尚北道", "48" to "慶尚南道",
+        "49" to "済州特別自治道",
+    )
+
+    fun country(code: String?): String? = lookup(countries, code)
+    fun koreaRegion(code: String?): String? = code?.let { c -> koreaRegions.firstOrNull { it.first == c }?.second ?: c }
+
+    /**
+     * 所在地の表示．日本は都道府県，韓国は「韓国 ・ 市・道」．
+     * 日本以外の城は，都道府県を持たず，市・道で表す．
+     */
+    fun area(country: String, prefecture: String?, region: String?): String? =
+        if (country == "JP") prefecture(prefecture)
+        else listOfNotNull(country(country), koreaRegion(region)).joinToString(" ・ ")
+
     fun prefecture(code: String?): String? = code?.let { c -> prefectures.firstOrNull { it.first == c }?.second ?: "その他" }
     fun castleKind(v: String?): String? = lookup(castleKinds, v)
     fun locationType(v: String?): String? = lookup(locationTypes, v)

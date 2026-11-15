@@ -135,7 +135,7 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                             status = when (val r = container.syncRepository.sync()) {
                                 is SyncResult.Success -> "更新しました（${r.updatedCount} 件）"
                                 SyncResult.Skipped -> "Android Auto の接続中は更新しません"
-                                is SyncResult.Failure -> "更新に失敗しました"
+                                is SyncResult.Failure -> "更新に失敗しました: ${r.summary}"
                             }
                         }
                     })

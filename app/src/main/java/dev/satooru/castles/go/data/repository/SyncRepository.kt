@@ -1,5 +1,6 @@
 package dev.satooru.castles.go.data.repository
 
+import android.util.Log
 import androidx.room.withTransaction
 import dev.satooru.castles.go.data.local.AppDatabase
 import dev.satooru.castles.go.data.local.CastleEntity
@@ -17,7 +18,10 @@ import java.io.IOException
 sealed interface SyncResult {
     data class Success(val updatedCount: Int) : SyncResult
     data object Skipped : SyncResult
-    data class Failure(val cause: Throwable, val retryable: Boolean) : SyncResult
+    data class Failure(val cause: Throwable, val retryable: Boolean) : SyncResult {
+        /** 画面に出す短い説明 */
+        val summary: String get() = cause.message?.takeIf { it.isNotBlank() } ?: cause::class.java.simpleName
+    }
 }
 
 /**
@@ -55,13 +59,16 @@ class SyncRepository(
                 markChecked()
                 SyncResult.Success(updated)
             } catch (e: HttpStatusException) {
+                Log.w(TAG, "同期に失敗: ${e.message}", e)
                 SyncResult.Failure(e, retryable = e.code == 429 || e.code >= 500)
             } catch (e: IOException) {
+                Log.w(TAG, "同期に失敗（通信）: $e", e)
                 SyncResult.Failure(e, retryable = true)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 // 想定外の JSON（SerializationException）や Room の例外．再試行しても直らない．
+                Log.w(TAG, "同期に失敗（想定外）: $e", e)
                 SyncResult.Failure(e, retryable = false)
             }
         }
@@ -139,6 +146,7 @@ class SyncRepository(
     }
 
     companion object {
+        private const val TAG = "SyncRepository"
         const val STALE_AFTER_MILLIS = 6L * 60 * 60 * 1000
         private const val SQLITE_VARIABLE_LIMIT = 500
     }

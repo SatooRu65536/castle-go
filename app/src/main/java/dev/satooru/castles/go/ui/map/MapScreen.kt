@@ -65,7 +65,7 @@ fun MapScreen(
     val nearby by viewModel.nearby.collectAsStateWithLifecycle()
     val selected by viewModel.selected.collectAsStateWithLifecycle()
     val syncing by viewModel.syncing.collectAsStateWithLifecycle()
-    val syncFailed by viewModel.syncFailed.collectAsStateWithLifecycle()
+    val syncError by viewModel.syncError.collectAsStateWithLifecycle()
     val camera = rememberCameraPositionState { position = CameraPosition.fromLatLngZoom(JAPAN_CENTER, 5f) }
     val scope = rememberCoroutineScope()
     var movedToUser by remember { mutableStateOf(false) }
@@ -131,8 +131,8 @@ fun MapScreen(
             }
             if (syncing) {
                 CastleDistanceChip(name = "城のデータを更新しています", distance = "", onClick = {})
-            } else if (syncFailed) {
-                CastleDistanceChip(name = "同期に失敗しました．設定から再度更新できます", distance = "", onClick = onOpenSettings)
+            } else if (syncError != null) {
+                CastleDistanceChip(name = "同期に失敗: $syncError", distance = "", onClick = onOpenSettings)
             }
         }
 

@@ -36,14 +36,14 @@ class MapViewModel(private val container: AppContainer) : ViewModel() {
     private val repository = container.castleRepository
 
     val syncing = MutableStateFlow(false)
-    val syncFailed = MutableStateFlow(false)
+    val syncError = MutableStateFlow<String?>(null)
 
     init {
         // 前回の確認から一定時間（6 時間）を超えていれば，起動時に同期する．
         viewModelScope.launch {
             syncing.value = true
             try {
-                syncFailed.value = container.syncRepository.syncIfStale() is SyncResult.Failure
+                syncError.value = (container.syncRepository.syncIfStale() as? SyncResult.Failure)?.summary
             } finally {
                 syncing.value = false
             }

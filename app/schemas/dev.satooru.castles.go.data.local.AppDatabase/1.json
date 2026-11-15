@@ -1,0 +1,351 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "52dbc4f3e7761546a86ab4ce08a6de14",
+    "entities": [
+      {
+        "tableName": "castle",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `currentRevisionNumber` INTEGER NOT NULL, `name` TEXT NOT NULL, `nameKana` TEXT NOT NULL, `searchText` TEXT NOT NULL, `lat` REAL NOT NULL, `lng` REAL NOT NULL, `scale` INTEGER NOT NULL, `castleKind` TEXT, `locationType` TEXT, `prefecture` TEXT, `tenshuStatus` TEXT, `meijoSelection` TEXT, `meijoNumber` INTEGER, `primaryPhotoId` TEXT, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currentRevisionNumber",
+            "columnName": "currentRevisionNumber",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nameKana",
+            "columnName": "nameKana",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "searchText",
+            "columnName": "searchText",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lat",
+            "columnName": "lat",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lng",
+            "columnName": "lng",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "scale",
+            "columnName": "scale",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "castleKind",
+            "columnName": "castleKind",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "locationType",
+            "columnName": "locationType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "prefecture",
+            "columnName": "prefecture",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "tenshuStatus",
+            "columnName": "tenshuStatus",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "meijoSelection",
+            "columnName": "meijoSelection",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "meijoNumber",
+            "columnName": "meijoNumber",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "primaryPhotoId",
+            "columnName": "primaryPhotoId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deletedAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_castle_scale",
+            "unique": false,
+            "columnNames": [
+              "scale"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_castle_scale` ON `${TABLE_NAME}` (`scale`)"
+          },
+          {
+            "name": "index_castle_lat",
+            "unique": false,
+            "columnNames": [
+              "lat"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_castle_lat` ON `${TABLE_NAME}` (`lat`)"
+          },
+          {
+            "name": "index_castle_lng",
+            "unique": false,
+            "columnNames": [
+              "lng"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_castle_lng` ON `${TABLE_NAME}` (`lng`)"
+          },
+          {
+            "name": "index_castle_prefecture",
+            "unique": false,
+            "columnNames": [
+              "prefecture"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_castle_prefecture` ON `${TABLE_NAME}` (`prefecture`)"
+          }
+        ]
+      },
+      {
+        "tableName": "castle_tag",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "castle_tag_assignment",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`castleId` TEXT NOT NULL, `tagId` TEXT NOT NULL, PRIMARY KEY(`castleId`, `tagId`))",
+        "fields": [
+          {
+            "fieldPath": "castleId",
+            "columnName": "castleId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tagId",
+            "columnName": "tagId",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "castleId",
+            "tagId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_castle_tag_assignment_tagId",
+            "unique": false,
+            "columnNames": [
+              "tagId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_castle_tag_assignment_tagId` ON `${TABLE_NAME}` (`tagId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "castle_detail",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`castleId` TEXT NOT NULL, `revisionNumber` INTEGER NOT NULL, `body` TEXT NOT NULL, `attributes` TEXT NOT NULL, `photos` TEXT NOT NULL, PRIMARY KEY(`castleId`))",
+        "fields": [
+          {
+            "fieldPath": "castleId",
+            "columnName": "castleId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revisionNumber",
+            "columnName": "revisionNumber",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "body",
+            "columnName": "body",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attributes",
+            "columnName": "attributes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "photos",
+            "columnName": "photos",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "castleId"
+          ]
+        }
+      },
+      {
+        "tableName": "visit",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`castleId` TEXT NOT NULL, `visitedAt` INTEGER NOT NULL, `memo` TEXT NOT NULL, PRIMARY KEY(`castleId`))",
+        "fields": [
+          {
+            "fieldPath": "castleId",
+            "columnName": "castleId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "visitedAt",
+            "columnName": "visitedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "memo",
+            "columnName": "memo",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "castleId"
+          ]
+        }
+      },
+      {
+        "tableName": "sync_state",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `cursor` TEXT, `lastSyncedAt` INTEGER, `lastCheckedAt` INTEGER, `tagsEtag` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cursor",
+            "columnName": "cursor",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastSyncedAt",
+            "columnName": "lastSyncedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastCheckedAt",
+            "columnName": "lastCheckedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "tagsEtag",
+            "columnName": "tagsEtag",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "notified_castle",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`castleId` TEXT NOT NULL, `notifiedAt` INTEGER NOT NULL, PRIMARY KEY(`castleId`))",
+        "fields": [
+          {
+            "fieldPath": "castleId",
+            "columnName": "castleId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notifiedAt",
+            "columnName": "notifiedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "castleId"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '52dbc4f3e7761546a86ab4ce08a6de14')"
+    ]
+  }
+}

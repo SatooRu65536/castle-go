@@ -14,7 +14,7 @@ enum class TravelMode(
     WALKING("徒歩", 2.0, 4_000, "walking"),
 }
 
-/** 周辺の表示の方式．スマートフォンと Android Auto で共通． */
+/** 周辺の表示の方式．Android Auto のみで使う（スマートフォンの地図は画面内の城をすべて出す）． */
 enum class NearbyMode(val label: String) {
     TOP_N("件数（上位 N 件）"),
     RADIUS("半径（N km 以内）"),

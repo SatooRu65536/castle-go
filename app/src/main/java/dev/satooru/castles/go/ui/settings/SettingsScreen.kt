@@ -103,7 +103,7 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 )
             }
 
-            AppCard(title = "周辺の表示（Android Auto と共通）") {
+            AppCard(title = "周辺の表示（Android Auto のみ）") {
                 DropdownField(
                     "方式", NearbyMode.entries.map { it to it.label }, settings.nearbyMode,
                     { m -> if (m != null) update { it.copy(nearbyMode = m) } }, noneLabel = null,

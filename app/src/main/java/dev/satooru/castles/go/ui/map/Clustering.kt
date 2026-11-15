@@ -39,6 +39,16 @@ fun clusterCastles(
     val xy = points.map { it!! }
     val radii = sorted.map(radiusPx)
     val assigned = BooleanArray(sorted.size)
+    // 画面を，最大の半径の 2 倍（重なりうる最大の距離）の升目に区切り，隣り合う升目の城だけを比べる．
+    // すべての組を比べると，城が何千件もあるときに遅くなるため．
+    val cell = (radii.maxOrNull() ?: 1f).coerceAtLeast(1f) * 2f
+    val grid = HashMap<Long, MutableList<Int>>()
+    fun cellKey(cx: Int, cy: Int): Long = (cx.toLong() shl 32) xor (cy.toLong() and 0xffffffffL)
+    for (i in sorted.indices) {
+        val cx = kotlin.math.floor(xy[i].first / cell).toInt()
+        val cy = kotlin.math.floor(xy[i].second / cell).toInt()
+        grid.getOrPut(cellKey(cx, cy)) { mutableListOf() } += i
+    }
     val items = mutableListOf<MapItem>()
     for (i in sorted.indices) {
         if (assigned[i]) continue
@@ -47,9 +57,14 @@ fun clusterCastles(
             items += MapItem.Single(sorted[i])
             continue
         }
+        val cx = kotlin.math.floor(xy[i].first / cell).toInt()
+        val cy = kotlin.math.floor(xy[i].second / cell).toInt()
+        val near = mutableListOf<Int>()
+        for (dx in -1..1) for (dy in -1..1) grid[cellKey(cx + dx, cy + dy)]?.let { near += it }
+        near.sort()
         val group = mutableListOf(sorted[i])
-        for (j in i + 1 until sorted.size) {
-            if (assigned[j] || sorted[j].id == keepSingleId) continue
+        for (j in near) {
+            if (j <= i || assigned[j] || sorted[j].id == keepSingleId) continue
             val distance = hypot(xy[i].first - xy[j].first, xy[i].second - xy[j].second)
             if (distance < radii[i] + radii[j]) {
                 assigned[j] = true

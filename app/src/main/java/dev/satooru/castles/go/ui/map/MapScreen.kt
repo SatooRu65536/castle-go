@@ -138,7 +138,6 @@ fun MapScreen(
             MapViewport(
                 bounds.southwest.latitude, bounds.northeast.latitude,
                 bounds.southwest.longitude, bounds.northeast.longitude,
-                MapViewModel.minScaleFor(camera.position.zoom),
             ),
         )
     }
@@ -152,6 +151,8 @@ fun MapScreen(
                 zoomControlsEnabled = false,
                 myLocationButtonEnabled = false,
                 mapToolbarEnabled = false,
+                // 画面の位置を 1 次変換で求めるため，傾き（tilt）は使わない．
+                tiltGesturesEnabled = false,
             ),
             onMapLoaded = { mapLoaded = true },
             onMapClick = { viewModel.select(null) },
@@ -174,10 +175,16 @@ fun MapScreen(
             // 画面上で重なるピンは 1 つにまとめる．動きが止まったとき・表示する城が変わったとき・選択が変わったときだけ組み直す．
             val density = LocalDensity.current.density
             val items = remember(castles, settledPosition, mapLoaded, selected?.id) {
+                // 実際の地図の変換は 3 点だけ呼び，あとは 1 次変換で計算する（城が数千件でも遅くならない）．
                 val projection = if (mapLoaded) camera.projection else null
+                val projector = projection?.let { p ->
+                    ScreenProjector.fromSamples(
+                        camera.position.target.latitude, camera.position.target.longitude, camera.position.zoom, density,
+                    ) { lat, lng -> p.toScreenLocation(LatLng(lat, lng)).let { it.x.toDouble() to it.y.toDouble() } }
+                }
                 clusterCastles(
                     castles,
-                    position = { c -> projection?.toScreenLocation(LatLng(c.lat, c.lng))?.let { it.x.toFloat() to it.y.toFloat() } },
+                    position = { c -> projector?.toScreen(c.lat, c.lng) },
                     radiusPx = { c -> (renderer.radiusDp(c.scale) + renderer.strokeDp) * density },
                     keepSingleId = selected?.id,
                 )

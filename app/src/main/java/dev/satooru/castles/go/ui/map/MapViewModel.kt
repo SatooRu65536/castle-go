@@ -30,7 +30,6 @@ data class MapViewport(
     val maxLat: Double,
     val minLng: Double,
     val maxLng: Double,
-    val minScale: Int,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -79,7 +78,8 @@ class MapViewModel(private val container: AppContainer) : ViewModel() {
                         origin = origin,
                         filter = CastleFilter(),
                         limit = NEARBY_COUNT,
-                        radiusKm = if (settings.nearbyMode == NearbyMode.RADIUS) settings.effectiveRadiusKm else null,
+                        // スマホは近い順に 3 件．件数 N・半径の設定は Android Auto のみに使う．
+                        radiusKm = null,
                     ),
                 )
             }
@@ -103,7 +103,8 @@ class MapViewModel(private val container: AppContainer) : ViewModel() {
     /** 表示範囲の城のみ．規模で間引き，件数にも上限を設ける． */
     val castles: StateFlow<List<CastleEntity>> = viewport.filterNotNull()
         .flatMapLatest { v ->
-            repository.observeInBounds(v.minLat, v.maxLat, v.minLng, v.maxLng, v.minScale, MAX_MARKERS)
+            // スマホでは画面内の城をすべて出す（件数の上限・規模の間引きはしない）．まとめて表示するため，重なっても読みやすい．
+            repository.observeInBounds(v.minLat, v.maxLat, v.minLng, v.maxLng, 1, Int.MAX_VALUE)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -112,18 +113,7 @@ class MapViewModel(private val container: AppContainer) : ViewModel() {
     fun select(castle: CastleEntity?) { selected.value = castle }
 
     companion object {
-        const val MAX_MARKERS = 300
         const val NEARBY_COUNT = 3
-
-        /** ズームが小さい（広域）ほど，規模の大きい城のみ描く． */
-        fun minScaleFor(zoom: Float): Int = when {
-            zoom >= 15f -> 1
-            zoom >= 11f -> 2
-            zoom >= 10f -> 3
-            zoom >= 9f -> 4
-            zoom >= 7f -> 5
-            else -> 6
-        }
 
         /** すべての城に城名を出し始めるズーム．これより縮小した地図では規模 4 以上と選択中のみ． */
         const val ALL_LABELS_MIN_ZOOM = 14f

@@ -3,7 +3,6 @@ package dev.satooru.castles.go
 import dev.satooru.castles.go.data.repository.DistanceCalculator
 import dev.satooru.castles.go.data.repository.GeoPoint
 import dev.satooru.castles.go.ui.common.Labels
-import dev.satooru.castles.go.ui.map.MapViewModel
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -39,12 +38,6 @@ class UtilTest {
         assertEquals("1.2 km", Labels.distance(1234.0))
     }
 
-    @Test
-    fun minScaleGrowsAsZoomIn() {
-        assertEquals(6, MapViewModel.minScaleFor(5f))
-        assertEquals(2, MapViewModel.minScaleFor(14f))
-        assertEquals(1, MapViewModel.minScaleFor(15f))
-    }
 
     @Test
     fun notifyDistanceInputIsRoundedToOneDecimalAndLimitedTo10km() {

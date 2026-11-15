@@ -61,4 +61,39 @@ class ClusteringTest {
         assertEquals(2, items.size)
         assertTrue(items.all { it is MapItem.Single })
     }
+
+    @Test
+    fun gridClusteringGivesSameResultAsComparingEveryPair() {
+        // 乱数で並べた 600 件を，升目を使う実装と，総当たりの実装で比べる．
+        val random = java.util.Random(42)
+        val castles = (0 until 600).map { castle("c$it", 1 + random.nextInt(6)) }
+        val at = castles.associate { it.id to (random.nextFloat() * 800f to random.nextFloat() * 1600f) }
+        val radius = { c: CastleEntity -> 8f + c.scale * 2f }
+        val actual = clusterCastles(castles, position = { at[it.id] }, radiusPx = radius)
+        // 総当たり
+        val sorted = castles.sortedWith(compareByDescending<CastleEntity> { it.scale }.thenBy { it.id })
+        val assigned = BooleanArray(sorted.size)
+        val expected = mutableListOf<List<String>>()
+        for (i in sorted.indices) {
+            if (assigned[i]) continue
+            assigned[i] = true
+            val group = mutableListOf(sorted[i].id)
+            for (j in i + 1 until sorted.size) {
+                if (assigned[j]) continue
+                val a = at[sorted[i].id]!!; val b = at[sorted[j].id]!!
+                if (kotlin.math.hypot(a.first - b.first, a.second - b.second) < radius(sorted[i]) + radius(sorted[j])) {
+                    assigned[j] = true; group += sorted[j].id
+                }
+            }
+            expected += listOf(group)
+        }
+        val actualGroups = actual.map { item ->
+            when (item) {
+                is MapItem.Single -> listOf(item.castle.id)
+                is MapItem.Cluster -> item.members.map { it.id }
+            }
+        }
+        assertEquals(expected, actualGroups)
+        assertTrue(actual.any { it is MapItem.Cluster })
+    }
 }

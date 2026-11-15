@@ -13,7 +13,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import kotlin.math.max
 
 /** 地図のピンの画像．[anchorU] は画像の幅に対する，円の中心の位置（0〜1）． */
-class PinImage(val descriptor: BitmapDescriptor, val anchorU: Float)
+class PinImage(val descriptor: BitmapDescriptor, val anchorU: Float, val bytes: Int)
 
 /**
  * castle-wiki の地図に合わせた城のピン．規模（1〜6）に応じて円の半径を 11〜18.2 dp で変え，
@@ -21,7 +21,10 @@ class PinImage(val descriptor: BitmapDescriptor, val anchorU: Float)
  */
 class CastlePinRenderer(context: Context) {
     private val density = context.resources.displayMetrics.density
-    private val cache = LruCache<String, PinImage>(700)
+    // 画面内の城をすべて出すと数が多いため，件数ではなく画像のメモリの大きさ（24 MB）で制限する．
+    private val cache = object : LruCache<String, PinImage>(CACHE_BYTES) {
+        override fun sizeOf(key: String, value: PinImage): Int = value.bytes
+    }
     private val glyph: List<Pair<Path, Boolean>> = CASTLE_ICON_PATHS.map { (d, evenOdd) ->
         PathParser.createPathFromPathData(d).apply {
             fillType = if (evenOdd) Path.FillType.EVEN_ODD else Path.FillType.WINDING
@@ -64,6 +67,7 @@ class CastlePinRenderer(context: Context) {
 
     private fun renderCluster(count: Int): PinImage {
         val radius = (when {
+            count >= 1000 -> 26f
             count >= 100 -> 22f
             count >= 10 -> 19f
             else -> 16f
@@ -81,10 +85,10 @@ class CastlePinRenderer(context: Context) {
             color = WHITE
             typeface = Typeface.DEFAULT_BOLD
             textAlign = Paint.Align.CENTER
-            textSize = (if (text.length >= 3) 13f else 15f) * density
+            textSize = (if (text.length >= 4) 13f else if (text.length >= 3) 14f else 15f) * density
         }
         canvas.drawText(text, c, c - (paint.fontMetrics.ascent + paint.fontMetrics.descent) / 2, paint)
-        return PinImage(BitmapDescriptorFactory.fromBitmap(bitmap), 0.5f)
+        return PinImage(BitmapDescriptorFactory.fromBitmap(bitmap), 0.5f, bitmap.byteCount)
     }
 
     /** [label] が NULL のときは城名を描かない． */
@@ -131,10 +135,11 @@ class CastlePinRenderer(context: Context) {
             canvas.drawText(label, x, y, haloPaint)
             canvas.drawText(label, x, y, textPaint)
         }
-        return PinImage(BitmapDescriptorFactory.fromBitmap(bitmap), cx / bitmap.width)
+        return PinImage(BitmapDescriptorFactory.fromBitmap(bitmap), cx / bitmap.width, bitmap.byteCount)
     }
 
     private companion object {
+        const val CACHE_BYTES = 24 * 1024 * 1024
         const val MIN_RADIUS_DP = 11f
         const val MAX_RADIUS_DP = 18.2f
         const val STROKE_DP = 2f

@@ -32,6 +32,8 @@ data class AppSettings(
     val carNotifyDistanceKm: Double = 1.0,
     val carNotifyMinScale: Int = 4,
     val carNotifyUnvisitedOnly: Boolean = false,
+    /** アプリを閉じている間も通知する（Geofencing）．背景の位置情報の権限（常に許可）が必要． */
+    val backgroundNotifyEnabled: Boolean = false,
 ) {
     val effectiveRadiusKm: Double get() = radiusKm ?: travelMode.defaultRadiusKm
 }

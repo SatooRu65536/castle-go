@@ -1,6 +1,9 @@
 package dev.satooru.castles.go.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -25,9 +28,26 @@ object Routes {
 }
 
 @Composable
-fun CastleGoNavHost() {
+fun CastleGoNavHost(openCastleId: String? = null, onCastleOpened: () -> Unit = {}) {
     val nav = rememberNavController()
     val container = rememberContainer()
+
+    // 前面表示中は，現在地の更新ごとに近づいた城を通知する．背景の Geofence の登録も，大きく動いたときに作り直す．
+    val location by container.locationRepository.location.collectAsStateWithLifecycle()
+    LaunchedEffect(location) {
+        val here = location ?: return@LaunchedEffect
+        runCatching {
+            container.nearbyNotifier.notifyIfNear(here)
+            container.geofenceManager.refreshIfMoved(here)
+        }
+    }
+    // 通知から開かれたときは，その城の詳細を表示する．
+    LaunchedEffect(openCastleId) {
+        if (openCastleId != null) {
+            nav.navigate(Routes.detail(openCastleId))
+            onCastleOpened()
+        }
+    }
     NavHost(nav, startDestination = Routes.HOME) {
         composable(Routes.HOME) {
             val vm: MapViewModel = viewModel(factory = viewModelFactory { initializer { MapViewModel(container) } })

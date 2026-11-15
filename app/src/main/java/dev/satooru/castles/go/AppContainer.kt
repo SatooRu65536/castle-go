@@ -7,6 +7,8 @@ import dev.satooru.castles.go.data.repository.CastleRepository
 import dev.satooru.castles.go.data.repository.SyncRepository
 import dev.satooru.castles.go.data.repository.VisitRepository
 import dev.satooru.castles.go.location.LocationRepository
+import dev.satooru.castles.go.notify.GeofenceManager
+import dev.satooru.castles.go.notify.NearbyNotifier
 import dev.satooru.castles.go.settings.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,11 +41,19 @@ class AppContainer(context: Context) {
     /** Android Auto の接続中は同期しない． */
     val carConnected = AtomicInteger(0)
 
-    val syncRepository = SyncRepository(api, database, isCarConnected = { carConnected.get() > 0 })
+    val syncRepository = SyncRepository(
+        api, database,
+        isCarConnected = { carConnected.get() > 0 },
+        onUpdated = { geofenceManager.refresh(null) },
+    )
     val castleRepository = CastleRepository(api, database, json)
     val visitRepository = VisitRepository(database)
 
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val settingsRepository = SettingsRepository(context)
     val locationRepository = LocationRepository(context, appScope, settingsRepository)
+
+    /** 城へ近づいたときの通知（前面・Android Auto・背景の Geofencing で共有）． */
+    val nearbyNotifier = NearbyNotifier(context, this)
+    val geofenceManager = GeofenceManager(context, this)
 }

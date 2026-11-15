@@ -169,6 +169,9 @@ interface VisitDao {
     @Query("SELECT * FROM visit ORDER BY visitedAt DESC")
     fun observeAll(): Flow<List<VisitEntity>>
 
+    @Query("SELECT COUNT(*) FROM visit WHERE castleId = :castleId")
+    suspend fun countOf(castleId: String): Int
+
     @Upsert
     suspend fun upsert(visit: VisitEntity)
 
@@ -207,6 +210,9 @@ interface SyncStateDao {
 interface NotifiedCastleDao {
     @Query("SELECT castleId FROM notified_castle WHERE notifiedAt >= :since")
     suspend fun notifiedSince(since: Long): List<String>
+
+    @Query("SELECT MAX(notifiedAt) FROM notified_castle")
+    suspend fun latestNotifiedAt(): Long?
 
     @Upsert
     suspend fun upsert(notified: NotifiedCastleEntity)

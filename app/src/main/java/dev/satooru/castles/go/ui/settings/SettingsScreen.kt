@@ -61,6 +61,25 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val update = container.settingsRepository::update
     val notificationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
 
+    // 背景の通知の権限．前面の位置情報 → 背景の位置情報（Android 10 以上）の順に求める．
+    var permissionTick by remember { mutableStateOf(0) }
+    val backgroundLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        permissionTick++
+    }
+    val foregroundLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        permissionTick++
+        container.locationRepository.onPermissionChanged()
+        if (Build.VERSION.SDK_INT >= 29 && !container.geofenceManager.hasBackgroundPermission()) {
+            backgroundLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        }
+    }
+    val hasBackgroundPermission = remember(permissionTick) { container.geofenceManager.hasBackgroundPermission() }
+    // 設定や権限が変わったら，Geofence を登録し直す（無効なら解除する）．
+    androidx.compose.runtime.LaunchedEffect(
+        settings.backgroundNotifyEnabled, settings.carNotifyEnabled, settings.carNotifyDistanceKm,
+        settings.carNotifyMinScale, settings.carNotifyUnvisitedOnly, permissionTick,
+    ) { container.geofenceManager.refresh(null) }
+
     Box(modifier.fillMaxSize().background(PrimaryMuted)) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
@@ -103,7 +122,7 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 }
             }
 
-            AppCard(title = "Android Auto の近づいた通知") {
+            AppCard(title = "近づいた通知（前面・Android Auto・背景）") {
                 SwitchRow("通知する", settings.carNotifyEnabled) { v -> update { it.copy(carNotifyEnabled = v) } }
                 if (settings.carNotifyEnabled) {
                     DistanceField(
@@ -116,6 +135,25 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     )
                     SwitchRow("未訪問の城のみ", settings.carNotifyUnvisitedOnly) { v ->
                         update { it.copy(carNotifyUnvisitedOnly = v) }
+                    }
+                    SwitchRow("アプリを閉じていても通知する", settings.backgroundNotifyEnabled) { v ->
+                        update { it.copy(backgroundNotifyEnabled = v) }
+                        if (v && !container.geofenceManager.hasBackgroundPermission()) {
+                            if (container.locationRepository.hasPermission() && Build.VERSION.SDK_INT >= 29) {
+                                backgroundLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                            } else {
+                                foregroundLauncher.launch(
+                                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+                                )
+                            }
+                        }
+                    }
+                    if (settings.backgroundNotifyEnabled && !hasBackgroundPermission) {
+                        Text(
+                            "背景の通知には，位置情報の権限を「常に許可」にしてください",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
                     }
                     if (Build.VERSION.SDK_INT >= 33) {
                         PrimaryButton("通知の権限を許可", outlined = true, onClick = {

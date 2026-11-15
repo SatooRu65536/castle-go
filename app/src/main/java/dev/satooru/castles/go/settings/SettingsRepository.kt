@@ -24,6 +24,7 @@ class SettingsRepository(context: Context) {
             .putFloat(KEY_CAR_DISTANCE, next.carNotifyDistanceKm.toFloat())
             .putInt(KEY_CAR_MIN_SCALE, next.carNotifyMinScale)
             .putBoolean(KEY_CAR_UNVISITED, next.carNotifyUnvisitedOnly)
+            .putBoolean(KEY_BACKGROUND_NOTIFY, next.backgroundNotifyEnabled)
             .apply()
         _settings.value = next
     }
@@ -39,6 +40,7 @@ class SettingsRepository(context: Context) {
             carNotifyDistanceKm = prefs.getFloat(KEY_CAR_DISTANCE, d.carNotifyDistanceKm.toFloat()).toDouble(),
             carNotifyMinScale = prefs.getInt(KEY_CAR_MIN_SCALE, d.carNotifyMinScale),
             carNotifyUnvisitedOnly = prefs.getBoolean(KEY_CAR_UNVISITED, d.carNotifyUnvisitedOnly),
+            backgroundNotifyEnabled = prefs.getBoolean(KEY_BACKGROUND_NOTIFY, d.backgroundNotifyEnabled),
         )
     }
 
@@ -54,5 +56,6 @@ class SettingsRepository(context: Context) {
         const val KEY_CAR_DISTANCE = "carNotifyDistanceKm"
         const val KEY_CAR_MIN_SCALE = "carNotifyMinScale"
         const val KEY_CAR_UNVISITED = "carNotifyUnvisitedOnly"
+        const val KEY_BACKGROUND_NOTIFY = "backgroundNotifyEnabled"
     }
 }

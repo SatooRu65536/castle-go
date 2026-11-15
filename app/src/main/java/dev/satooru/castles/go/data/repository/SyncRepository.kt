@@ -33,6 +33,8 @@ class SyncRepository(
     private val db: AppDatabase,
     private val isCarConnected: () -> Boolean = { false },
     private val clock: () -> Long = System::currentTimeMillis,
+    /** 城が更新されたあとに呼ぶ（背景の通知の Geofence を作り直すため）． */
+    private val onUpdated: suspend () -> Unit = {},
 ) {
     private val mutex = Mutex()
     private val castleDao = db.castleDao()
@@ -57,6 +59,7 @@ class SyncRepository(
                 syncTags()
                 // 全ページとタグがそろってから「確認済み」にする（途中で失敗したら次回も再開する）．
                 markChecked()
+                if (updated > 0) runCatching { onUpdated() }
                 SyncResult.Success(updated)
             } catch (e: HttpStatusException) {
                 Log.w(TAG, "同期に失敗: ${e.message}", e)

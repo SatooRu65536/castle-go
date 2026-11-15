@@ -18,8 +18,20 @@ class CastleCarSession : Session() {
             override fun onCreate(owner: LifecycleOwner) {
                 // 接続中は同期しない．
                 container.carConnected.incrementAndGet()
-                val notifier = CarNearbyNotifier(carContext.applicationContext, container)
-                owner.lifecycleScope.launch { notifier.run() }
+                // 接続中は，現在地の更新ごとに近づいた城を通知する．
+                owner.lifecycleScope.launch {
+                    container.locationRepository.location.collect { here ->
+                        if (here != null) {
+                            try {
+                                container.nearbyNotifier.notifyIfNear(here)
+                            } catch (e: kotlinx.coroutines.CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                // 通知の失敗で車載の画面を落とさない．
+                            }
+                        }
+                    }
+                }
             }
 
             override fun onDestroy(owner: LifecycleOwner) {

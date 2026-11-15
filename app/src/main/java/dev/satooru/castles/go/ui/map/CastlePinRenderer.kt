@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.Typeface
 import android.util.LruCache
 import androidx.core.graphics.PathParser
 import com.google.android.gms.maps.model.BitmapDescriptor
@@ -37,6 +38,7 @@ class CastlePinRenderer(context: Context) {
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = TEXT_DP * density
         color = TEXT_COLOR
+        typeface = Typeface.DEFAULT_BOLD
     }
     private val haloPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = TEXT_DP * density
@@ -44,6 +46,7 @@ class CastlePinRenderer(context: Context) {
         style = Paint.Style.STROKE
         strokeWidth = HALO_DP * 2 * density
         strokeJoin = Paint.Join.ROUND
+        typeface = Typeface.DEFAULT_BOLD
     }
 
     /** [label] が NULL のときは城名を描かない． */

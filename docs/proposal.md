@@ -399,10 +399,10 @@ UI（Compose / Car App の Screen）
 | 3 | スマートフォンの一覧・検索・絞り込み・詳細 |
 | 4 | Android Auto の最小版（Room の近傍 N 件を `PlaceListMapTemplate` で表示）を DHU で確認 |
 | 5 | スマートフォンの地図（Google Maps Compose） |
-| 6 | 訪問記録 |
-| 7 | 外部ナビ連携（移動手段の引き継ぎ）．アプリ未インストール時の処理 |
-| 8 | テスト（スマートフォン，DHU，実機の Android Auto，機内モード） |
-| 9 | 周辺の表示（Top-N・半径 N km）の設定，Android Auto の近づいた通知（MVP の後） |
+| 6 | 周辺の表示（Top-N・半径 N km）の設定，Android Auto の近づいた通知 |
+| 7 | 訪問記録 |
+| 8 | 外部ナビ連携（移動手段の引き継ぎ）．アプリ未インストール時の処理 |
+| 9 | テスト（スマートフォン，DHU，実機の Android Auto，機内モード） |
 
 - Android Auto は MVP の最大のリスクのため，地図より先に最小版で確認する
 

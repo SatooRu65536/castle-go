@@ -1,6 +1,7 @@
 package dev.satooru.castles.go.ui.common
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -83,15 +85,17 @@ fun CastleDistanceChip(name: String, distance: String, onClick: () -> Unit, modi
     }
 }
 
-/** 黒地の主ボタン（角 10dp）． */
+/** 黒地の主ボタン（角 10dp）．[outlined] のときは白地に枠線． */
 @Composable
 fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, outlined: Boolean = false) {
     val shape = RoundedCornerShape(10.dp)
-    val base = modifier.height(40.dp).let {
-        if (outlined) it.background(Color.White, shape).then(Modifier) else it.background(Color.Black, shape)
+    val surface = if (outlined) {
+        modifier.height(40.dp).background(Color.White, shape).border(1.dp, Color(0xFFD1D5DB), shape)
+    } else {
+        modifier.height(40.dp).background(Color.Black, shape)
     }
     Box(
-        base.clickable(onClick = onClick).padding(horizontal = 16.dp),
+        surface.clip(shape).clickable(onClick = onClick).padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(text, style = MaterialTheme.typography.labelLarge, color = if (outlined) Color.Black else Color.White)

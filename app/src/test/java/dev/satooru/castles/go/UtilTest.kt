@@ -59,4 +59,16 @@ class UtilTest {
         assertEquals(2, MapViewModel.minScaleFor(14f))
         assertEquals(1, MapViewModel.minScaleFor(15f))
     }
+
+    @Test
+    fun notifyDistanceInputIsRoundedToOneDecimalAndLimitedTo10km() {
+        assertEquals(1.5, dev.satooru.castles.go.ui.settings.parseDistanceKm("1.5")!!, 0.0)
+        assertEquals(0.1, dev.satooru.castles.go.ui.settings.parseDistanceKm("0.1")!!, 0.0)
+        assertEquals(10.0, dev.satooru.castles.go.ui.settings.parseDistanceKm("10")!!, 0.0)
+        assertEquals(2.3, dev.satooru.castles.go.ui.settings.parseDistanceKm("2.34")!!, 0.0)
+        assertNull(dev.satooru.castles.go.ui.settings.parseDistanceKm("10.1"))
+        assertNull(dev.satooru.castles.go.ui.settings.parseDistanceKm("0"))
+        assertNull(dev.satooru.castles.go.ui.settings.parseDistanceKm("abc"))
+        assertNull(dev.satooru.castles.go.ui.settings.parseDistanceKm(""))
+    }
 }

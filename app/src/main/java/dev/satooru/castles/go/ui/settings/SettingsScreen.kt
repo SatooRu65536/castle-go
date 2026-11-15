@@ -18,6 +18,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.satooru.castles.go.data.repository.SyncResult
@@ -103,9 +106,9 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             AppCard(title = "Android Auto の近づいた通知") {
                 SwitchRow("通知する", settings.carNotifyEnabled) { v -> update { it.copy(carNotifyEnabled = v) } }
                 if (settings.carNotifyEnabled) {
-                    DropdownField(
-                        "通知する距離", listOf(0.5, 1.0, 2.0, 5.0).map { it to "${formatKm(it)} km" }, settings.carNotifyDistanceKm,
-                        { d -> if (d != null) update { it.copy(carNotifyDistanceKm = d) } }, noneLabel = null,
+                    DistanceField(
+                        value = settings.carNotifyDistanceKm,
+                        onValidChange = { d -> update { it.copy(carNotifyDistanceKm = d) } },
                     )
                     DropdownField(
                         "規模の下限", (1..6).map { it to "$it 以上" }, settings.carNotifyMinScale,
@@ -171,6 +174,36 @@ private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
             ),
         )
     }
+}
+
+/**
+ * 通知する距離の手入力．0.1 km 単位で 0.1〜10 km まで．範囲外・不正な入力は保存せず，エラーを表示する．
+ */
+@Composable
+private fun DistanceField(value: Double, onValidChange: (Double) -> Unit) {
+    var text by remember { mutableStateOf(formatKm(value)) }
+    val parsed = parseDistanceKm(text)
+    OutlinedTextField(
+        value = text,
+        onValueChange = { input ->
+            text = input
+            parseDistanceKm(input)?.let(onValidChange)
+        },
+        label = { Text("通知する距離（km）") },
+        singleLine = true,
+        isError = parsed == null,
+        supportingText = { Text(if (parsed == null) "0.1〜10 の範囲で，0.1 刻みで入力してください" else "0.1 km 単位，10 km まで") },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+/** 0.1 km 単位に丸めた距離．0.1〜10 の範囲外や数値でないときは NULL． */
+internal fun parseDistanceKm(input: String): Double? {
+    val v = input.trim().toDoubleOrNull() ?: return null
+    if (v.isNaN() || v < 0.05 || v > 10.0) return null
+    val rounded = Math.round(v * 10) / 10.0
+    return rounded.takeIf { it in 0.1..10.0 }
 }
 
 private fun formatKm(km: Double): String =

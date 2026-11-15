@@ -12,6 +12,7 @@ import dev.satooru.castles.go.data.repository.NearbyCastle
 import dev.satooru.castles.go.data.repository.SyncResult
 import dev.satooru.castles.go.settings.NearbyMode
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -51,20 +52,31 @@ class MapViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
-    /** 現在地に近い城（上位 3 件）．100 m 以上動いたとき，設定・城の件数が変わったときに再計算する． */
+    /** 地図の中心（カメラの位置）．左上の最寄りの城の基準．まだ地図が動いていないときは NULL． */
+    private val mapCenter = MutableStateFlow<GeoPoint?>(null)
+
+    fun onCenterChanged(center: GeoPoint) { mapCenter.value = center }
+
+    /** 左上の最寄りの城の基準．地図の中心．地図がまだ動いていない間は現在地． */
+    private val nearbyOrigin: Flow<GeoPoint?> = combine(mapCenter, container.locationRepository.location) { center, here ->
+        center ?: here
+    }.distinctUntilChanged { a, b ->
+        // 50 m 未満の動きでは再計算しない．
+        a == b || (a != null && b != null && DistanceCalculator.meters(a, b) < 50)
+    }
+
+    /** 地図の中心に近い城（上位 3 件）．中心が 50 m 以上動いたとき，設定・城の件数が変わったときに再計算する． */
     val nearby: StateFlow<List<NearbyCastle>> = combine(
-        container.locationRepository.location.distinctUntilChanged { a, b ->
-            a == b || (a != null && b != null && DistanceCalculator.meters(a, b) < 100)
-        },
+        nearbyOrigin,
         container.settingsRepository.settings,
         repository.observeCount(),
-    ) { here, settings, _ -> here to settings }
-        .flatMapLatest { (here, settings) ->
+    ) { origin, settings, _ -> origin to settings }
+        .flatMapLatest { (origin, settings) ->
             flow {
                 emit(
-                    if (here == null) emptyList()
+                    if (origin == null) emptyList()
                     else repository.nearby(
-                        origin = here,
+                        origin = origin,
                         filter = CastleFilter(),
                         limit = NEARBY_COUNT,
                         radiusKm = if (settings.nearbyMode == NearbyMode.RADIUS) settings.effectiveRadiusKm else null,

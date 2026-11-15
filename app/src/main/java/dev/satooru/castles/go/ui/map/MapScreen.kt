@@ -1,6 +1,9 @@
 package dev.satooru.castles.go.ui.map
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -116,7 +119,10 @@ fun MapScreen(
     var mapLoaded by remember { mutableStateOf(false) }
     // カメラの移動が止まったとき（`move` のように移動中にならない更新も含む）と，地図の読み込み後に，表示範囲の城を読み直す．
     LaunchedEffect(camera.isMoving, camera.position, mapLoaded) {
-        if (camera.isMoving || !mapLoaded) return@LaunchedEffect
+        if (camera.isMoving) return@LaunchedEffect
+        // 地図の中心を，左上の最寄りの城の基準にする．
+        camera.position.target.let { viewModel.onCenterChanged(GeoPoint(it.latitude, it.longitude)) }
+        if (!mapLoaded) return@LaunchedEffect
         val bounds = camera.projection?.visibleRegion?.latLngBounds ?: return@LaunchedEffect
         viewModel.onViewportChanged(
             MapViewport(
@@ -186,7 +192,10 @@ fun MapScreen(
             }
         }
 
-        // 左上: 近い城 3 件（距離つき）
+        // 画面の中央の十字．左上の最寄りの城の基準を示す．現在地を追従している間は出さない．
+        if (!following) CenterCrosshair(Modifier.align(Alignment.Center))
+
+        // 左上: 地図の中心に近い城 3 件（距離つき）
         Column(
             Modifier.align(Alignment.TopStart).statusBarsPadding().padding(top = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -268,5 +277,20 @@ private fun SelectedCastleCard(castle: CastleEntity, location: GeoPoint?, onOpen
                 ExternalNavigation.start(context, castle.lat, castle.lng)
             })
         }
+    }
+}
+
+/** 画面の中央を示す小さな十字．地図の上でも見えるよう，白い縁取りをつける． */
+@Composable
+private fun CenterCrosshair(modifier: Modifier = Modifier) {
+    Canvas(modifier.size(24.dp)) {
+        val half = size.width / 2
+        val center = Offset(half, half)
+        fun cross(color: androidx.compose.ui.graphics.Color, width: Float) {
+            drawLine(color, Offset(center.x - half, center.y), Offset(center.x + half, center.y), strokeWidth = width, cap = StrokeCap.Round)
+            drawLine(color, Offset(center.x, center.y - half), Offset(center.x, center.y + half), strokeWidth = width, cap = StrokeCap.Round)
+        }
+        cross(androidx.compose.ui.graphics.Color.White, 5.dp.toPx())
+        cross(androidx.compose.ui.graphics.Color(0xFF1C1917), 2.dp.toPx())
     }
 }

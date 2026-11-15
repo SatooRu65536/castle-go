@@ -3,6 +3,7 @@ package dev.satooru.castles.go.ui.map
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -42,6 +43,7 @@ import dev.satooru.castles.go.BuildConfig
 import dev.satooru.castles.go.data.local.CastleEntity
 import dev.satooru.castles.go.data.repository.DistanceCalculator
 import dev.satooru.castles.go.data.repository.GeoPoint
+import dev.satooru.castles.go.navigation.ExternalNavigation
 import dev.satooru.castles.go.ui.common.AppCard
 import dev.satooru.castles.go.ui.common.AppIconButton
 import dev.satooru.castles.go.ui.common.CastleDistanceChip
@@ -217,6 +219,13 @@ private fun SelectedCastleCard(castle: CastleEntity, location: GeoPoint?, onOpen
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        PrimaryButton("詳細を見る", onClick = { onOpenCastle(castle.id) })
+        val context = LocalContext.current
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PrimaryButton("詳細を見る", onClick = { onOpenCastle(castle.id) })
+            // 移動手段は Google マップ側で選ぶ．
+            PrimaryButton("ここに行く", outlined = true, onClick = {
+                ExternalNavigation.start(context, castle.lat, castle.lng)
+            })
+        }
     }
 }

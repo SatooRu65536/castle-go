@@ -71,4 +71,17 @@ class UtilTest {
         assertNull(dev.satooru.castles.go.ui.settings.parseDistanceKm("abc"))
         assertNull(dev.satooru.castles.go.ui.settings.parseDistanceKm(""))
     }
+
+    @Test
+    fun navigationUrlOmitsTravelModeWhenNotSpecified() {
+        val nav = dev.satooru.castles.go.navigation.ExternalNavigation
+        assertEquals(
+            "https://www.google.com/maps/dir/?api=1&destination=35.185,136.899",
+            nav.url(35.185, 136.899),
+        )
+        assertEquals(
+            "https://www.google.com/maps/dir/?api=1&destination=35.185,136.899&travelmode=walking",
+            nav.url(35.185, 136.899, dev.satooru.castles.go.settings.TravelMode.WALKING),
+        )
+    }
 }

@@ -11,12 +11,19 @@ import dev.satooru.castles.go.settings.TravelMode
 object ExternalNavigation {
     private const val GOOGLE_MAPS_PACKAGE = "com.google.android.apps.maps"
 
-    /** Google マップの URL（Maps URLs）．`travelmode` に移動手段を渡す． */
-    fun uri(lat: Double, lng: Double, mode: TravelMode): Uri =
-        Uri.parse("https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=${mode.urlParam}")
+    /**
+     * Google マップの URL（Maps URLs）．[mode] があれば `travelmode` に移動手段を渡す．
+     * [mode] が NULL のときは `travelmode` を付けず，移動手段は Google マップ側で選ぶ．
+     */
+    fun url(lat: Double, lng: Double, mode: TravelMode? = null): String {
+        val travelMode = mode?.let { "&travelmode=${it.urlParam}" }.orEmpty()
+        return "https://www.google.com/maps/dir/?api=1&destination=$lat,$lng$travelMode"
+    }
+
+    fun uri(lat: Double, lng: Double, mode: TravelMode? = null): Uri = Uri.parse(url(lat, lng, mode))
 
     /** Google マップのアプリを優先して開く．アプリがなければ，URL を扱える他のアプリ（ブラウザーなど）で開く． */
-    fun start(context: Context, lat: Double, lng: Double, mode: TravelMode) {
+    fun start(context: Context, lat: Double, lng: Double, mode: TravelMode? = null) {
         val uri = uri(lat, lng, mode)
         val intent = Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         try {

@@ -24,6 +24,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.key
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,6 +68,12 @@ private const val DETECTION_STROKE_WIDTH_PX = 3f
 
 /** 選択中のピンは，通常のピン（zIndex は規模の 1〜6）より手前に置く． */
 private const val SELECTED_Z_INDEX = 100f
+
+/** まとめたマーカーは，通常のピン（zIndex は規模の 1〜6）より手前，選択中のピンより奥． */
+private const val CLUSTER_Z_INDEX = 20f
+
+/** まとめたマーカーを押したときに拡大するズームの幅． */
+private const val CLUSTER_ZOOM_STEP = 2f
 
 /**
  * 最初に表示する画面．全画面の地図に，現在地に近い城 3 件（距離つき）を左上に重ねる．
@@ -117,9 +124,12 @@ fun MapScreen(
         if (following && here != null) camera.animate(CameraUpdateFactory.newLatLng(LatLng(here.lat, here.lng)))
     }
     var mapLoaded by remember { mutableStateOf(false) }
+    // 動きが止まったときのカメラの位置．重なる城をまとめ直す契機にする（動いている間は組み直さない）．
+    var settledPosition by remember { mutableStateOf(camera.position) }
     // カメラの移動が止まったとき（`move` のように移動中にならない更新も含む）と，地図の読み込み後に，表示範囲の城を読み直す．
     LaunchedEffect(camera.isMoving, camera.position, mapLoaded) {
         if (camera.isMoving) return@LaunchedEffect
+        settledPosition = camera.position
         // 地図の中心を，左上の最寄りの城の基準にする．
         camera.position.target.let { viewModel.onCenterChanged(GeoPoint(it.latitude, it.longitude)) }
         if (!mapLoaded) return@LaunchedEffect
@@ -161,26 +171,59 @@ fun MapScreen(
                     zIndex = 0f,
                 )
             }
-            // 通常のピン．選択しても画像を差し替えない（表示中のマーカーの画像を差し替えると，一瞬消えてちらつくことがあるため）．
-            castles.forEach { castle ->
-                key(castle.id) {
-                    // 縮小時は規模の大きい城だけに城名を出す（castle-wiki と同じ）．
-                    val label = castle.name.takeIf { showAllLabels || castle.scale >= MapViewModel.LABELED_MIN_SCALE }
-                    val pin = renderer.image(castle.scale, false, label)
-                    Marker(
-                        state = rememberMarkerState(position = LatLng(castle.lat, castle.lng)),
-                        icon = pin.descriptor,
-                        anchor = Offset(pin.anchorU, 0.5f),
-                        // 規模の大きい城を手前に重ねる．
-                        zIndex = castle.scale.toFloat(),
-                        onClick = {
-                            viewModel.select(castle)
-                            // 選んだ城を画面の中央に置く（ズームは変えない）．
-                            following = false
-                            scope.launch { camera.animate(CameraUpdateFactory.newLatLng(LatLng(castle.lat, castle.lng))) }
-                            true
-                        },
-                    )
+            // 画面上で重なるピンは 1 つにまとめる．動きが止まったとき・表示する城が変わったとき・選択が変わったときだけ組み直す．
+            val density = LocalDensity.current.density
+            val items = remember(castles, settledPosition, mapLoaded, selected?.id) {
+                val projection = if (mapLoaded) camera.projection else null
+                clusterCastles(
+                    castles,
+                    position = { c -> projection?.toScreenLocation(LatLng(c.lat, c.lng))?.let { it.x.toFloat() to it.y.toFloat() } },
+                    radiusPx = { c -> (renderer.radiusDp(c.scale) + renderer.strokeDp) * density },
+                    keepSingleId = selected?.id,
+                )
+            }
+            items.forEach { item ->
+                when (item) {
+                    is MapItem.Single -> key(item.castle.id) {
+                        val castle = item.castle
+                        // 通常のピン．選択しても画像を差し替えない（表示中のマーカーの画像を差し替えると，一瞬消えてちらつくことがあるため）．
+                        // 縮小時は規模の大きい城だけに城名を出す（castle-wiki と同じ）．
+                        val label = castle.name.takeIf { showAllLabels || castle.scale >= MapViewModel.LABELED_MIN_SCALE }
+                        val pin = renderer.image(castle.scale, false, label)
+                        Marker(
+                            state = rememberMarkerState(position = LatLng(castle.lat, castle.lng)),
+                            icon = pin.descriptor,
+                            anchor = Offset(pin.anchorU, 0.5f),
+                            // 規模の大きい城を手前に重ねる．
+                            zIndex = castle.scale.toFloat(),
+                            onClick = {
+                                viewModel.select(castle)
+                                // 選んだ城を画面の中央に置く（ズームは変えない）．
+                                following = false
+                                scope.launch { camera.animate(CameraUpdateFactory.newLatLng(LatLng(castle.lat, castle.lng))) }
+                                true
+                            },
+                        )
+                    }
+                    is MapItem.Cluster -> key(item.key) {
+                        // まとめたマーカー．件数を表示し，押すとその位置を中心に拡大する．
+                        val pin = renderer.clusterImage(item.count)
+                        Marker(
+                            state = rememberMarkerState(key = item.key, position = LatLng(item.lat, item.lng)),
+                            icon = pin.descriptor,
+                            anchor = Offset(0.5f, 0.5f),
+                            zIndex = CLUSTER_Z_INDEX,
+                            onClick = {
+                                following = false
+                                scope.launch {
+                                    camera.animate(
+                                        CameraUpdateFactory.newLatLngZoom(LatLng(item.lat, item.lng), camera.position.zoom + CLUSTER_ZOOM_STEP),
+                                    )
+                                }
+                                true
+                            },
+                        )
+                    }
                 }
             }
             // 選択中のピン．通常のピンの上に別のマーカーとして重ね，赤い円と城名を出す．

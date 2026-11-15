@@ -49,6 +49,44 @@ class CastlePinRenderer(context: Context) {
         typeface = Typeface.DEFAULT_BOLD
     }
 
+    /** 規模に応じたピンの円の半径（dp，縁は含まない）． */
+    fun radiusDp(scale: Int): Float =
+        MIN_RADIUS_DP + (MAX_RADIUS_DP - MIN_RADIUS_DP) * (scale.coerceIn(1, 6) - 1) / 5f
+
+    /** ピンの縁の太さ（dp）． */
+    val strokeDp: Float get() = STROKE_DP
+
+    /** 重なった [count] 件の城をまとめたマーカー．灰色の円に件数を白で書く（castle-wiki のまとめた城の配色）． */
+    fun clusterImage(count: Int): PinImage {
+        val key = "cluster|$count"
+        return cache.get(key) ?: renderCluster(count).also { cache.put(key, it) }
+    }
+
+    private fun renderCluster(count: Int): PinImage {
+        val radius = (when {
+            count >= 100 -> 22f
+            count >= 10 -> 19f
+            else -> 16f
+        }) * density
+        val stroke = STROKE_DP * density
+        val size = (2 * (radius + stroke)).toInt() + 1
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val c = size / 2f
+        fillPaint.color = CLUSTER_COLOR
+        canvas.drawCircle(c, c, radius + stroke / 2, fillPaint)
+        canvas.drawCircle(c, c, radius, strokePaint)
+        val text = count.toString()
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = WHITE
+            typeface = Typeface.DEFAULT_BOLD
+            textAlign = Paint.Align.CENTER
+            textSize = (if (text.length >= 3) 13f else 15f) * density
+        }
+        canvas.drawText(text, c, c - (paint.fontMetrics.ascent + paint.fontMetrics.descent) / 2, paint)
+        return PinImage(BitmapDescriptorFactory.fromBitmap(bitmap), 0.5f)
+    }
+
     /** [label] が NULL のときは城名を描かない． */
     fun image(scale: Int, selected: Boolean, label: String?): PinImage {
         val key = "$scale|$selected|${label.orEmpty()}"
@@ -57,7 +95,7 @@ class CastlePinRenderer(context: Context) {
 
     private fun render(scale: Int, selected: Boolean, label: String?): PinImage {
         val s = scale.coerceIn(1, 6)
-        val radius = (MIN_RADIUS_DP + (MAX_RADIUS_DP - MIN_RADIUS_DP) * (s - 1) / 5f) * density
+        val radius = radiusDp(s) * density
         val stroke = STROKE_DP * density
         val diameter = 2 * (radius + stroke)
         val gap = LABEL_GAP_DP * density
@@ -108,5 +146,6 @@ class CastlePinRenderer(context: Context) {
         const val CIRCLE_COLOR = 0xFF292524.toInt()
         const val SELECTED_COLOR = 0xFFB91C1C.toInt()
         const val TEXT_COLOR = 0xFF1C1917.toInt()
+        const val CLUSTER_COLOR = 0xFF78716C.toInt()
     }
 }

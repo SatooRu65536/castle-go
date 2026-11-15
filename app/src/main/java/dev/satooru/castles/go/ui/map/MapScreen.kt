@@ -16,7 +16,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import kotlinx.coroutines.flow.map
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.key
@@ -83,9 +82,6 @@ fun MapScreen(
     val nearby by viewModel.nearby.collectAsStateWithLifecycle()
     val selected by viewModel.selected.collectAsStateWithLifecycle()
     val settings by container.settingsRepository.settings.collectAsStateWithLifecycle()
-    // 「未訪問のみ」で通知する設定のときだけ，訪問済みの城を検知範囲から除く．
-    val visitedIds by remember { container.visitRepository.observeAll().map { list -> list.map { it.castleId }.toSet() } }
-        .collectAsStateWithLifecycle(emptySet())
     val syncing by viewModel.syncing.collectAsStateWithLifecycle()
     val syncError by viewModel.syncError.collectAsStateWithLifecycle()
     // 詳細画面から戻ったときは，離れたときのカメラの位置から再開する．
@@ -147,25 +143,17 @@ fun MapScreen(
             val context = LocalContext.current
             val renderer = remember { CastlePinRenderer(context) }
             val showAllLabels by remember { derivedStateOf { camera.position.zoom >= MapViewModel.ALL_LABELS_MIN_ZOOM } }
-            // 通知の検知範囲．通知の対象になる城（規模の下限以上，設定によっては未訪問）の周りに，通知する距離の円を描く．
-            if (settings.carNotifyEnabled) {
-                val radiusMeters = settings.carNotifyDistanceKm * 1000
-                castles.forEach { castle ->
-                    val notifiable = castle.scale >= settings.carNotifyMinScale &&
-                        !(settings.carNotifyUnvisitedOnly && castle.id in visitedIds)
-                    if (notifiable) {
-                        key("range-${castle.id}") {
-                            Circle(
-                                center = LatLng(castle.lat, castle.lng),
-                                radius = radiusMeters,
-                                fillColor = DETECTION_FILL,
-                                strokeColor = DETECTION_STROKE,
-                                strokeWidth = DETECTION_STROKE_WIDTH_PX,
-                                zIndex = 0f,
-                            )
-                        }
-                    }
-                }
+            // 通知の検知範囲．現在地を中心に，通知する距離の円を描く（この円に城が入ると通知する）．
+            val here = location
+            if (settings.carNotifyEnabled && here != null) {
+                Circle(
+                    center = LatLng(here.lat, here.lng),
+                    radius = settings.carNotifyDistanceKm * 1000,
+                    fillColor = DETECTION_FILL,
+                    strokeColor = DETECTION_STROKE,
+                    strokeWidth = DETECTION_STROKE_WIDTH_PX,
+                    zIndex = 0f,
+                )
             }
             // 通常のピン．選択しても画像を差し替えない（表示中のマーカーの画像を差し替えると，一瞬消えてちらつくことがあるため）．
             castles.forEach { castle ->

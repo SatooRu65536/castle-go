@@ -31,6 +31,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.CameraMoveStartedReason
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
@@ -73,6 +74,8 @@ fun MapScreen(
     val camera = rememberCameraPositionState { position = CameraPosition.fromLatLngZoom(JAPAN_CENTER, 5f) }
     val scope = rememberCoroutineScope()
     var movedToUser by remember { mutableStateOf(false) }
+    // 現在地を中心にしている間は true．現在地が変わるたびに中心を追従させ，ユーザーが地図を操作したら false にする．
+    var following by remember { mutableStateOf(false) }
 
     // 最初に現在地が取れたとき，現在地へ移動する．
     LaunchedEffect(location) {
@@ -80,7 +83,15 @@ fun MapScreen(
         if (here != null && !movedToUser) {
             movedToUser = true
             camera.move(CameraUpdateFactory.newLatLngZoom(LatLng(here.lat, here.lng), 10f))
+            following = true
         }
+    }
+    LaunchedEffect(camera.isMoving) {
+        if (camera.isMoving && camera.cameraMoveStartedReason == CameraMoveStartedReason.GESTURE) following = false
+    }
+    LaunchedEffect(location, following) {
+        val here = location
+        if (following && here != null) camera.animate(CameraUpdateFactory.newLatLng(LatLng(here.lat, here.lng)))
     }
     var mapLoaded by remember { mutableStateOf(false) }
     // カメラの移動が止まったとき（`move` のように移動中にならない更新も含む）と，地図の読み込み後に，表示範囲の城を読み直す．
@@ -143,6 +154,7 @@ fun MapScreen(
                     distance = Labels.distance(n.distanceMeters),
                     onClick = {
                         viewModel.select(n.castle)
+                        following = false
                         scope.launch {
                             camera.animate(CameraUpdateFactory.newLatLngZoom(LatLng(n.castle.lat, n.castle.lng), 13f))
                         }
@@ -165,7 +177,11 @@ fun MapScreen(
             if (location != null) {
                 AppIconButton(Icons.Filled.MyLocation, "現在地へ移動", {
                     location?.let { here ->
-                        scope.launch { camera.animate(CameraUpdateFactory.newLatLngZoom(LatLng(here.lat, here.lng), 14f)) }
+                        scope.launch {
+                            following = false
+                            camera.animate(CameraUpdateFactory.newLatLngZoom(LatLng(here.lat, here.lng), 14f))
+                            following = true
+                        }
                     }
                 })
             }

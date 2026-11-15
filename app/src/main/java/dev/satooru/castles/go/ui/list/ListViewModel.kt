@@ -36,7 +36,12 @@ class ListViewModel(private val container: AppContainer) : ViewModel() {
     val location: StateFlow<GeoPoint?> = container.locationRepository.location
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    private val sortOrigin: Flow<GeoPoint?> = container.locationRepository.location
+    /** 画面が前面にある間のみ，画面側が現在地を渡す（背景で位置情報の購読を残さないため）． */
+    private val origin = MutableStateFlow<GeoPoint?>(null)
+
+    fun setOrigin(point: GeoPoint?) { origin.value = point }
+
+    private val sortOrigin: Flow<GeoPoint?> = origin
         .distinctUntilChanged { a, b ->
             a == b || (a != null && b != null && DistanceCalculator.meters(a, b) < 300)
         }
@@ -66,8 +71,11 @@ class ListViewModel(private val container: AppContainer) : ViewModel() {
 
     private suspend fun runSync(force: Boolean) {
         syncing.value = true
-        val result = if (force) sync.sync() else sync.syncIfStale()
-        syncing.value = false
+        val result = try {
+            if (force) sync.sync() else sync.syncIfStale()
+        } finally {
+            syncing.value = false
+        }
         syncMessage.value = when (result) {
             is SyncResult.Success -> if (force) "更新しました（${result.updatedCount} 件）" else null
             SyncResult.Skipped -> null

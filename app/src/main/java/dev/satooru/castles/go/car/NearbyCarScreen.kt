@@ -14,6 +14,8 @@ import androidx.car.app.model.PlaceMarker
 import androidx.car.app.model.Row
 import androidx.car.app.model.Template
 import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import dev.satooru.castles.go.AppContainer
@@ -53,11 +55,13 @@ class NearbyCarScreen(carContext: CarContext, private val container: AppContaine
 
     init {
         lifecycle.addObserver(object : DefaultLifecycleObserver {
-            override fun onStart(owner: LifecycleOwner) {
-                // 表示中のみ現在地と設定を監視する．
+            override fun onCreate(owner: LifecycleOwner) {
+                // 表示中（STARTED）のみ現在地と設定を監視する．STOPPED で購読を止める．
                 owner.lifecycleScope.launch {
-                    combine(container.locationRepository.location, container.settingsRepository.settings) { l, s -> l to s }
-                        .collect { reload() }
+                    owner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                        combine(container.locationRepository.location, container.settingsRepository.settings) { l, s -> l to s }
+                            .collect { reload() }
+                    }
                 }
             }
         })

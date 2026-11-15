@@ -17,7 +17,7 @@ import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /** 依存の組み立て．スマートフォンと Android Auto は同じ Repository を通じて同じ Room を参照する． */
 class AppContainer(context: Context) {
@@ -37,9 +37,9 @@ class AppContainer(context: Context) {
         .create(CastleWikiApi::class.java)
 
     /** Android Auto の接続中は同期しない． */
-    val carConnected = AtomicBoolean(false)
+    val carConnected = AtomicInteger(0)
 
-    val syncRepository = SyncRepository(api, database, isCarConnected = { carConnected.get() })
+    val syncRepository = SyncRepository(api, database, isCarConnected = { carConnected.get() > 0 })
     val castleRepository = CastleRepository(api, database, json)
     val visitRepository = VisitRepository(database)
 

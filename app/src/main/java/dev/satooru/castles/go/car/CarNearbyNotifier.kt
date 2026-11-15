@@ -17,6 +17,7 @@ import dev.satooru.castles.go.data.local.NotifiedCastleEntity
 import dev.satooru.castles.go.data.repository.CastleFilter
 import dev.satooru.castles.go.data.repository.GeoPoint
 import dev.satooru.castles.go.ui.common.Labels
+import kotlinx.coroutines.CancellationException
 
 /**
  * 接続中に城へ近づいたら車載に通知する．ジオフェンスは使わず，現在地の更新ごとに端末の `castle` から距離を計算する．
@@ -28,7 +29,15 @@ class CarNearbyNotifier(private val context: Context, private val container: App
     suspend fun run() {
         createChannel()
         container.locationRepository.location.collect { here ->
-            if (here != null) check(here)
+            if (here != null) {
+                try {
+                    check(here)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // 通知の失敗で車載の画面を落とさない．
+                }
+            }
         }
     }
 

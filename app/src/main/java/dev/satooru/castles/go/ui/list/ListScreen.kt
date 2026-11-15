@@ -57,6 +57,7 @@ fun ListScreen(viewModel: ListViewModel, onOpenCastle: (String) -> Unit, modifie
     var showFilter by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
 
+    LaunchedEffect(location) { location?.let { viewModel.setOrigin(it) } }
     LaunchedEffect(message) {
         message?.let { snackbar.showSnackbar(it); viewModel.consumeSyncMessage() }
     }

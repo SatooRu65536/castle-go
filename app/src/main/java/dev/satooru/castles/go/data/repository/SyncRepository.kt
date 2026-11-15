@@ -11,6 +11,7 @@ import dev.satooru.castles.go.data.remote.CastleWikiApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.CancellationException
 import java.io.IOException
 
 sealed interface SyncResult {
@@ -50,11 +51,18 @@ class SyncRepository(
             try {
                 val updated = syncCastles()
                 syncTags()
+                // 全ページとタグがそろってから「確認済み」にする（途中で失敗したら次回も再開する）．
+                markChecked()
                 SyncResult.Success(updated)
-            } catch (e: IOException) {
-                SyncResult.Failure(e, retryable = true)
             } catch (e: HttpStatusException) {
                 SyncResult.Failure(e, retryable = e.code == 429 || e.code >= 500)
+            } catch (e: IOException) {
+                SyncResult.Failure(e, retryable = true)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // 想定外の JSON（SerializationException）や Room の例外．再試行しても直らない．
+                SyncResult.Failure(e, retryable = false)
             }
         }
     }
@@ -70,20 +78,19 @@ class SyncRepository(
         var cursor = stateDao.get()?.cursor
         while (true) {
             val response = api.syncCastles(cursor)
-            if (response.code() == 304) {
-                touch(cursor, serverTime = null)
-                return total
-            }
+            if (response.code() == 304) return total
             if (!response.isSuccessful) throw HttpStatusException(response.code())
             val body = response.body() ?: throw HttpStatusException(response.code())
             val next = if (body.castles.isEmpty()) cursor else body.nextCursor ?: cursor
             db.withTransaction {
                 apply(body.castles)
-                touch(next, serverTime = body.serverTime)
+                saveCursor(next, serverTime = body.serverTime)
             }
             total += body.castles.size
-            cursor = next
             if (!body.hasMore) return total
+            // 続きがあるのにカーソルが進まない場合は，無限ループを避けて打ち切る．
+            if (next == cursor) throw HttpStatusException(502)
+            cursor = next
         }
     }
 
@@ -94,22 +101,21 @@ class SyncRepository(
         if (deleted.isNotEmpty()) {
             val ids = deleted.map { it.id }
             ids.chunked(SQLITE_VARIABLE_LIMIT).forEach {
+                // タグの対応は消さない（復元時にタグの ETag が変わらなくても戻るように）．
                 castleDao.deleteByIds(it)
-                tagDao.deleteAssignmentsOf(it)
                 detailDao.deleteByIds(it)
             }
         }
     }
 
-    private suspend fun touch(cursor: String?, serverTime: Long?) {
+    private suspend fun saveCursor(cursor: String?, serverTime: Long?) {
         val state = stateDao.get() ?: SyncStateEntity(cursor = null, lastSyncedAt = null, lastCheckedAt = null, tagsEtag = null)
-        stateDao.upsert(
-            state.copy(
-                cursor = cursor,
-                lastSyncedAt = serverTime ?: state.lastSyncedAt,
-                lastCheckedAt = clock(),
-            ),
-        )
+        stateDao.upsert(state.copy(cursor = cursor, lastSyncedAt = serverTime ?: state.lastSyncedAt))
+    }
+
+    private suspend fun markChecked() {
+        val state = stateDao.get() ?: SyncStateEntity(cursor = null, lastSyncedAt = null, lastCheckedAt = null, tagsEtag = null)
+        stateDao.upsert(state.copy(lastCheckedAt = clock()))
     }
 
     private suspend fun syncTags() {

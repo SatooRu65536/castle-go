@@ -60,8 +60,13 @@ class LocationRepository(
 
     @SuppressLint("MissingPermission")
     private fun updates(intervalMillis: Long): Flow<GeoPoint> = callbackFlow {
-        client.lastLocation.addOnSuccessListener { loc ->
-            if (loc != null) trySend(GeoPoint(loc.latitude, loc.longitude))
+        try {
+            client.lastLocation.addOnSuccessListener { loc ->
+                if (loc != null) trySend(GeoPoint(loc.latitude, loc.longitude))
+            }
+        } catch (e: SecurityException) {
+            close()
+            return@callbackFlow
         }
         val request = LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, intervalMillis)
             .setMinUpdateDistanceMeters(50f)
@@ -71,7 +76,13 @@ class LocationRepository(
                 result.lastLocation?.let { trySend(GeoPoint(it.latitude, it.longitude)) }
             }
         }
-        client.requestLocationUpdates(request, callback, Looper.getMainLooper())
+        try {
+            client.requestLocationUpdates(request, callback, Looper.getMainLooper())
+        } catch (e: SecurityException) {
+            // 権限が外れた．購読を終える（再度許可されれば onPermissionChanged で作り直す）．
+            close()
+            return@callbackFlow
+        }
         awaitClose { client.removeLocationUpdates(callback) }
     }
 }

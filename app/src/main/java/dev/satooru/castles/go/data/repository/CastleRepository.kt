@@ -15,7 +15,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import java.io.IOException
+import kotlinx.coroutines.CancellationException
 import kotlin.math.cos
 
 /** 絞り込みの条件．すべて端末の Room で処理する． */
@@ -73,14 +73,14 @@ class CastleRepository(
         Pager(PagingConfig(pageSize = 50, enablePlaceholders = false)) {
             if (origin == null) {
                 castleDao.pagingByKana(
-                    filter.query.trim(), filter.prefecture, filter.minScale, filter.castleKind,
+                    filter.query.trim().let(::escapeLike), filter.prefecture, filter.minScale, filter.castleKind,
                     filter.tenshuStatus, filter.locationType, filter.meijoSelection, filter.tagId,
                     if (filter.unvisitedOnly) 1 else 0,
                 )
             } else {
                 castleDao.pagingByDistance(
                     origin.lat, origin.lng, cosSquared(origin.lat),
-                    filter.query.trim(), filter.prefecture, filter.minScale, filter.castleKind,
+                    filter.query.trim().let(::escapeLike), filter.prefecture, filter.minScale, filter.castleKind,
                     filter.tenshuStatus, filter.locationType, filter.meijoSelection, filter.tagId,
                     if (filter.unvisitedOnly) 1 else 0,
                 )
@@ -109,7 +109,7 @@ class CastleRepository(
             minLng = origin.lng - dLng, maxLng = origin.lng + dLng,
             // 半径の円の外側を取り除くため，範囲の矩形では余分に取る
             limit = if (radiusKm == null) limit else limit * 4,
-            query = filter.query.trim(), prefecture = filter.prefecture, minScale = filter.minScale,
+            query = filter.query.trim().let(::escapeLike), prefecture = filter.prefecture, minScale = filter.minScale,
             castleKind = filter.castleKind, tenshuStatus = filter.tenshuStatus,
             locationType = filter.locationType, meijoSelection = filter.meijoSelection,
             tagId = filter.tagId, unvisitedOnly = if (filter.unvisitedOnly) 1 else 0,
@@ -145,13 +145,12 @@ class CastleRepository(
                 response.code() == 410 -> {
                     db.withTransaction {
                         castleDao.deleteByIds(listOf(castleId))
-                        tagDao.deleteAssignmentsOf(listOf(castleId))
                         detailDao.deleteByIds(listOf(castleId))
                     }
                     DetailResult.Gone
                 }
                 response.isSuccessful -> {
-                    val dto = response.body()!!
+                    val dto = response.body() ?: return fallback(cached, HttpStatusException(response.code()))
                     detailDao.upsert(
                         CastleDetailEntity(
                             castleId = castleId,
@@ -165,7 +164,10 @@ class CastleRepository(
                 }
                 else -> fallback(cached, HttpStatusException(response.code()))
             }
-        } catch (e: IOException) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // 通信の失敗，想定外の JSON，Room の例外．キャッシュがあればそれを使う．
             fallback(cached, e)
         }
     }
@@ -189,6 +191,10 @@ class CastleRepository(
         private const val MIN_COS = 0.01
     }
 }
+
+/** LIKE のワイルドカード（`%`・`_`）と `\` をエスケープする．SQL 側は `ESCAPE '\'`． */
+internal fun escapeLike(q: String): String =
+    q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 data class NearbyCastle(val castle: CastleEntity, val distanceMeters: Double)
 

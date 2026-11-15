@@ -43,7 +43,7 @@
 | スマートフォンの地図 | Google Maps Compose．API キーは `local.properties` で管理し，コミットしない |
 | ビルド | Gradle Kotlin DSL |
 
-- `minSdk` は 26 とする（現在の設定は 34 のため，変更すること）
+- `minSdk` は 26 とする
 
 ## データ取得の方針
 

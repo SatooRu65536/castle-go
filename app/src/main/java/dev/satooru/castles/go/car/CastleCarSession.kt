@@ -17,13 +17,13 @@ class CastleCarSession : Session() {
         lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onCreate(owner: LifecycleOwner) {
                 // 接続中は同期しない．
-                container.carConnected.set(true)
+                container.carConnected.incrementAndGet()
                 val notifier = CarNearbyNotifier(carContext.applicationContext, container)
                 owner.lifecycleScope.launch { notifier.run() }
             }
 
             override fun onDestroy(owner: LifecycleOwner) {
-                container.carConnected.set(false)
+                container.carConnected.decrementAndGet()
             }
         })
     }

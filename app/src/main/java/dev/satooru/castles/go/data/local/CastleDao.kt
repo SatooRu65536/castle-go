@@ -14,7 +14,7 @@ private const val SELECT_CASTLE = "SELECT * FROM castle WHERE deletedAt IS NULL 
 
 object CastleFilterSql {
     const val WHERE =
-        "(:query = '' OR searchText LIKE '%' || :query || '%') " +
+        "(:query = '' OR searchText LIKE '%' || :query || '%' ESCAPE '\\') " +
             "AND (:prefecture IS NULL OR prefecture = :prefecture) " +
             "AND scale >= :minScale " +
             "AND (:castleKind IS NULL OR castleKind = :castleKind) " +
@@ -107,7 +107,7 @@ interface CastleDao {
     /** 地図の表示範囲の城．規模で間引くため [minScale] 以上のみ返す． */
     @Query(
         "SELECT * FROM castle WHERE deletedAt IS NULL AND lat BETWEEN :minLat AND :maxLat " +
-            "AND lng BETWEEN :minLng AND :maxLng AND scale >= :minScale LIMIT :limit",
+            "AND lng BETWEEN :minLng AND :maxLng AND scale >= :minScale ORDER BY scale DESC, id LIMIT :limit",
     )
     fun observeInBounds(
         minLat: Double,

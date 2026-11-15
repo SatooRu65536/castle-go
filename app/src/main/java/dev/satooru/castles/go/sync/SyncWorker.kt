@@ -17,7 +17,9 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
     override suspend fun doWork(): Result {
         val container = (applicationContext as CastleGoApplication).container
         return when (val result = container.syncRepository.sync()) {
-            is SyncResult.Success, SyncResult.Skipped -> Result.success()
+            is SyncResult.Success -> Result.success()
+            // 車載の接続中で見送った場合は，後で再試行する．
+            SyncResult.Skipped -> Result.retry()
             is SyncResult.Failure -> if (result.retryable) Result.retry() else Result.failure()
         }
     }

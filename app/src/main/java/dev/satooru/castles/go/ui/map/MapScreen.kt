@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.key
@@ -73,17 +74,24 @@ fun MapScreen(
     val selected by viewModel.selected.collectAsStateWithLifecycle()
     val syncing by viewModel.syncing.collectAsStateWithLifecycle()
     val syncError by viewModel.syncError.collectAsStateWithLifecycle()
-    val camera = rememberCameraPositionState { position = CameraPosition.fromLatLngZoom(JAPAN_CENTER, 5f) }
+    // 詳細画面から戻ったときは，離れたときのカメラの位置から再開する．
+    val camera = rememberCameraPositionState {
+        position = viewModel.savedCamera ?: CameraPosition.fromLatLngZoom(JAPAN_CENTER, 5f)
+    }
+    DisposableEffect(camera) { onDispose { viewModel.savedCamera = camera.position } }
     val scope = rememberCoroutineScope()
-    var movedToUser by remember { mutableStateOf(false) }
     // 現在地を中心にしている間は true．現在地が変わるたびに中心を追従させ，ユーザーが地図を操作したら false にする．
-    var following by remember { mutableStateOf(false) }
+    var following by remember { mutableStateOf(viewModel.following) }
+    LaunchedEffect(following) { viewModel.following = following }
+    // 別の画面へ移る前に追従を止める（戻ったときに現在地へ引き戻さない）．
+    val openCastle: (String) -> Unit = { id -> following = false; viewModel.following = false; onOpenCastle(id) }
+    val openSettings: () -> Unit = { following = false; viewModel.following = false; onOpenSettings() }
 
-    // 最初に現在地が取れたとき，現在地へ移動する．
+    // 最初に現在地が取れたとき，現在地へ移動する（一度だけ．戻ったときは繰り返さない）．
     LaunchedEffect(location) {
         val here = location
-        if (here != null && !movedToUser) {
-            movedToUser = true
+        if (here != null && !viewModel.movedToUser) {
+            viewModel.movedToUser = true
             camera.move(CameraUpdateFactory.newLatLngZoom(LatLng(here.lat, here.lng), 10f))
             following = true
         }
@@ -166,7 +174,7 @@ fun MapScreen(
             if (syncing) {
                 CastleDistanceChip(name = "城のデータを更新しています", distance = "", onClick = {})
             } else if (syncError != null) {
-                CastleDistanceChip(name = "同期に失敗: $syncError", distance = "", onClick = onOpenSettings)
+                CastleDistanceChip(name = "同期に失敗: $syncError", distance = "", onClick = openSettings)
             }
         }
 
@@ -175,7 +183,7 @@ fun MapScreen(
             Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 12.dp, end = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            AppIconButton(Icons.Filled.Settings, "設定", onOpenSettings)
+            AppIconButton(Icons.Filled.Settings, "設定", openSettings)
             if (location != null) {
                 AppIconButton(Icons.Filled.MyLocation, "現在地へ移動", {
                     location?.let { here ->
@@ -199,7 +207,7 @@ fun MapScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             LocationPermissionBanner(container.locationRepository)
-            selected?.let { castle -> SelectedCastleCard(castle, location, onOpenCastle) }
+            selected?.let { castle -> SelectedCastleCard(castle, location, openCastle) }
         }
     }
 }

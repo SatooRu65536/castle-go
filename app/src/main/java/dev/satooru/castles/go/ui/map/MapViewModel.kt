@@ -2,6 +2,7 @@ package dev.satooru.castles.go.ui.map
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.android.gms.maps.model.CameraPosition
 import dev.satooru.castles.go.AppContainer
 import dev.satooru.castles.go.data.local.CastleEntity
 import dev.satooru.castles.go.data.repository.CastleFilter
@@ -78,6 +79,14 @@ class MapViewModel(private val container: AppContainer) : ViewModel() {
 
     private val viewport = MutableStateFlow<MapViewport?>(null)
     val selected = MutableStateFlow<CastleEntity?>(null)
+
+    // 詳細画面などへ遷移すると地図の画面は破棄されるため，戻ったときに復元できるよう ViewModel に持つ．
+    /** 地図を離れたときのカメラの位置．NULL なら初期位置 */
+    var savedCamera: CameraPosition? = null
+    /** 最初の現在地への移動を済ませたか */
+    var movedToUser = false
+    /** 現在地を中心にして追従している間は true */
+    var following = false
 
     /** 表示範囲の城のみ．規模で間引き，件数にも上限を設ける． */
     val castles: StateFlow<List<CastleEntity>> = viewport.filterNotNull()

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Settings
@@ -99,6 +100,7 @@ fun MapScreen(
     viewModel: MapViewModel,
     onOpenCastle: (String) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenVisits: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val container = rememberContainer()
@@ -121,6 +123,7 @@ fun MapScreen(
     // 別の画面へ移る前に追従を止める（戻ったときに現在地へ引き戻さない）．
     val openCastle: (String) -> Unit = { id -> following = false; viewModel.following = false; onOpenCastle(id) }
     val openSettings: () -> Unit = { following = false; viewModel.following = false; onOpenSettings() }
+    val openVisits: () -> Unit = { following = false; viewModel.following = false; onOpenVisits() }
 
     // 最初に現在地が取れたとき，現在地へ移動する（一度だけ．戻ったときは繰り返さない）．
     LaunchedEffect(location) {
@@ -303,6 +306,7 @@ fun MapScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             AppIconButton(Icons.Filled.Settings, "設定", openSettings)
+            AppIconButton(Icons.Filled.CheckCircle, "訪問記録", openVisits)
             AppIconButton(Icons.Filled.FilterList, "表示する規模", { showScaleFilter = !showScaleFilter })
             if (location != null) {
                 AppIconButton(Icons.Filled.MyLocation, "現在地へ移動", {

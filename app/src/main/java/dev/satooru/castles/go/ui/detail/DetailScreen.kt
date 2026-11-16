@@ -59,6 +59,7 @@ import dev.satooru.castles.go.data.repository.CastleDetail
 import dev.satooru.castles.go.data.repository.DistanceCalculator
 import dev.satooru.castles.go.data.repository.GeoPoint
 import dev.satooru.castles.go.ui.common.Labels
+import dev.satooru.castles.go.ui.visit.VisitCard
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -73,6 +74,7 @@ fun DetailScreen(viewModel: DetailViewModel, onBack: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val tags by viewModel.tags.collectAsStateWithLifecycle()
     val location by viewModel.location.collectAsStateWithLifecycle()
+    val visit by viewModel.visit.collectAsStateWithLifecycle()
 
     Box(Modifier.fillMaxSize().background(PrimaryMuted)) {
         // 見えている部分だけを組み立てる（長い解説と属性を最初の 1 フレームで組み立てると，開くときにもたつくため）．
@@ -121,6 +123,15 @@ fun DetailScreen(viewModel: DetailViewModel, onBack: () -> Unit) {
                             }
                         }
                     }
+                }
+                item(key = "visit") {
+                    VisitCard(
+                        visit,
+                        onMark = viewModel::markVisited,
+                        onUnmark = viewModel::unmarkVisited,
+                        onChange = viewModel::updateVisit,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
                 }
                 item(key = "navigation") { NavigationCard(c, Modifier.padding(horizontal = 16.dp)) }
                 when (val st = state) {

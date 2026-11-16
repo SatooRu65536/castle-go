@@ -173,6 +173,14 @@ interface VisitDao {
     @Query("SELECT * FROM visit ORDER BY visitedAt DESC")
     fun observeAll(): Flow<List<VisitEntity>>
 
+    /** 訪問の新しい順．城のデータが端末にない訪問は含めない． */
+    @Query(
+        "SELECT v.castleId AS castleId, c.name AS name, c.prefecture AS prefecture, c.country AS country, " +
+            "v.visitedAt AS visitedAt, v.memo AS memo " +
+            "FROM visit v JOIN castle c ON c.id = v.castleId ORDER BY v.visitedAt DESC",
+    )
+    fun observeVisitedCastles(): Flow<List<VisitedCastleRow>>
+
     @Query("SELECT COUNT(*) FROM visit WHERE castleId = :castleId")
     suspend fun countOf(castleId: String): Int
 
@@ -191,6 +199,15 @@ interface VisitDao {
     )
     fun observeMeijoProgress(): Flow<List<MeijoProgressRow>>
 }
+
+data class VisitedCastleRow(
+    val castleId: String,
+    val name: String,
+    val prefecture: String?,
+    val country: String,
+    val visitedAt: Long,
+    val memo: String,
+)
 
 data class MeijoProgressRow(
     val selection: String,

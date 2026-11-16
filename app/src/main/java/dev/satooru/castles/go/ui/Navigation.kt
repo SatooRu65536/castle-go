@@ -28,10 +28,13 @@ import dev.satooru.castles.go.ui.detail.DetailViewModel
 import dev.satooru.castles.go.ui.map.MapScreen
 import dev.satooru.castles.go.ui.map.MapViewModel
 import dev.satooru.castles.go.ui.settings.SettingsScreen
+import dev.satooru.castles.go.ui.visit.VisitsScreen
+import dev.satooru.castles.go.ui.visit.VisitsViewModel
 
 object Routes {
     const val HOME = "home"
     const val SETTINGS = "settings"
+    const val VISITS = "visits"
     const val DETAIL = "detail/{id}"
     fun detail(id: String) = "detail/$id"
 }
@@ -66,6 +69,7 @@ fun CastleGoNavHost(openCastleId: String? = null, onCastleOpened: () -> Unit = {
             mapViewModel,
             onOpenCastle = { nav.navigate(Routes.detail(it)) },
             onOpenSettings = { nav.navigate(Routes.SETTINGS) },
+            onOpenVisits = { nav.navigate(Routes.VISITS) },
         )
         NavHost(
             nav,
@@ -79,6 +83,12 @@ fun CastleGoNavHost(openCastleId: String? = null, onCastleOpened: () -> Unit = {
             composable(Routes.HOME) {}
             composable(Routes.SETTINGS) {
                 OverlayScreen { SettingsScreen(onBack = { nav.popBackStack() }) }
+            }
+            composable(Routes.VISITS) {
+                val vm: VisitsViewModel = viewModel(factory = viewModelFactory { initializer { VisitsViewModel(container) } })
+                OverlayScreen {
+                    VisitsScreen(vm, onOpenCastle = { nav.navigate(Routes.detail(it)) }, onBack = { nav.popBackStack() })
+                }
             }
             composable(Routes.DETAIL, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
                 val id = entry.arguments?.getString("id").orEmpty()

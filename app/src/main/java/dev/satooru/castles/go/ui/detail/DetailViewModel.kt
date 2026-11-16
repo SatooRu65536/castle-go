@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dev.satooru.castles.go.AppContainer
 import dev.satooru.castles.go.data.local.CastleEntity
 import dev.satooru.castles.go.data.local.CastleTagEntity
+import dev.satooru.castles.go.data.local.VisitEntity
 import dev.satooru.castles.go.data.repository.CastleDetail
 import dev.satooru.castles.go.data.repository.DetailResult
 import dev.satooru.castles.go.ui.common.MdBlock
@@ -48,6 +49,17 @@ class DetailViewModel(private val castleId: String, container: AppContainer) : V
 
     val location = container.locationRepository.location
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    private val visits = container.visitRepository
+
+    val visit: StateFlow<VisitEntity?> = visits.observe(castleId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun markVisited() { viewModelScope.launch { visits.markVisited(castleId) } }
+
+    fun unmarkVisited() { viewModelScope.launch { visits.unmark(castleId) } }
+
+    fun updateVisit(visit: VisitEntity) { viewModelScope.launch { visits.update(visit) } }
 
     private val _state = MutableStateFlow<DetailUiState>(DetailUiState.Loading)
     val state: StateFlow<DetailUiState> = _state

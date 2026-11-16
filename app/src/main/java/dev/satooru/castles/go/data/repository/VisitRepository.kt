@@ -3,6 +3,7 @@ package dev.satooru.castles.go.data.repository
 import dev.satooru.castles.go.data.local.AppDatabase
 import dev.satooru.castles.go.data.local.MeijoProgressRow
 import dev.satooru.castles.go.data.local.VisitEntity
+import dev.satooru.castles.go.data.local.VisitedCastleRow
 import kotlinx.coroutines.flow.Flow
 
 /** 訪問記録．端末のみに保存し，API は使わない． */
@@ -12,6 +13,8 @@ class VisitRepository(db: AppDatabase, private val clock: () -> Long = System::c
     fun observe(castleId: String): Flow<VisitEntity?> = dao.observe(castleId)
 
     fun observeAll(): Flow<List<VisitEntity>> = dao.observeAll()
+
+    fun observeVisitedCastles(): Flow<List<VisitedCastleRow>> = dao.observeVisitedCastles()
 
     fun observeMeijoProgress(): Flow<List<MeijoProgressRow>> = dao.observeMeijoProgress()
 

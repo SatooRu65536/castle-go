@@ -21,6 +21,7 @@ import dev.satooru.castles.go.data.local.NotifiedCastleEntity
 import dev.satooru.castles.go.data.repository.CastleFilter
 import dev.satooru.castles.go.data.repository.DistanceCalculator
 import dev.satooru.castles.go.data.repository.GeoPoint
+import dev.satooru.castles.go.settings.AppSettings
 import dev.satooru.castles.go.ui.common.Labels
 
 /**
@@ -29,7 +30,7 @@ import dev.satooru.castles.go.ui.common.Labels
  * - Android Auto の接続中（[notifyIfNear]）
  * - アプリを閉じている間の Geofencing（[notifyEntered]）
  *
- * 同じ城は 24 時間，通知全体は 10 分に 1 回までに抑える（履歴は Room の `notified_castle`）．
+ * 同じ城は，一度範囲の外へ出てから設定の間隔（既定 24 時間）が経つまで再通知せず，通知全体は 10 分（同じ城の間隔がそれより短いときはその間隔）に 1 回までに抑える（履歴は Room の `notified_castle`）．
  */
 class NearbyNotifier(private val context: Context, private val container: AppContainer) {
     private val notifiedDao = container.database.notifiedCastleDao()
@@ -81,8 +82,8 @@ class NearbyNotifier(private val context: Context, private val container: AppCon
             val inRange = inRangeIds(here)
             release(suppressed.filter { it !in inRange })
         }
-        if (!canNotify(now)) return
-        val already = notifiedDao.notifiedSince(now - SAME_CASTLE_MILLIS).toSet() + suppressedIds()
+        if (!canNotify(now, settings)) return
+        val already = notifiedDao.notifiedSince(now - repeatMillis(settings)).toSet() + suppressedIds()
         val target = container.castleRepository.nearby(
             origin = here,
             filter = CastleFilter(minScale = settings.carNotifyMinScale, unvisitedOnly = settings.carNotifyUnvisitedOnly),
@@ -97,8 +98,8 @@ class NearbyNotifier(private val context: Context, private val container: AppCon
         val settings = container.settingsRepository.settings.value
         if (!settings.carNotifyEnabled || !settings.backgroundNotifyEnabled) return
         val now = System.currentTimeMillis()
-        if (!canNotify(now)) return
-        val already = notifiedDao.notifiedSince(now - SAME_CASTLE_MILLIS).toSet() + suppressedIds()
+        if (!canNotify(now, settings)) return
+        val already = notifiedDao.notifiedSince(now - repeatMillis(settings)).toSet() + suppressedIds()
         for (id in castleIds) {
             if (id in already) continue
             val castle = container.castleRepository.findCastle(id) ?: continue
@@ -110,11 +111,11 @@ class NearbyNotifier(private val context: Context, private val container: AppCon
         }
     }
 
-    private suspend fun canNotify(now: Long): Boolean {
+    private suspend fun canNotify(now: Long, settings: AppSettings): Boolean {
         if (!hasNotificationPermission()) return false
-        notifiedDao.deleteOlderThan(now - SAME_CASTLE_MILLIS)
+        notifiedDao.deleteOlderThan(now - HISTORY_MILLIS)
         val last = notifiedDao.latestNotifiedAt()
-        return last == null || now - last >= MIN_INTERVAL_MILLIS
+        return last == null || now - last >= minOf(MIN_INTERVAL_MILLIS, repeatMillis(settings))
     }
 
     private suspend fun post(castle: CastleEntity, distanceMeters: Double?, now: Long) {
@@ -152,6 +153,8 @@ class NearbyNotifier(private val context: Context, private val container: AppCon
         @Suppress("MissingPermission")
         NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
         notifiedDao.upsert(NotifiedCastleEntity(castle.id, now))
+        // 通知した城は，範囲の外へ出るまで再通知しない（位置の更新のたびに通知しない）．
+        suppress(listOf(castle.id))
     }
 
     private fun hasNotificationPermission(): Boolean {
@@ -166,7 +169,15 @@ class NearbyNotifier(private val context: Context, private val container: AppCon
         private const val NOTIFICATION_ID = 1001
         private const val KEY_SUPPRESSED = "ids"
         private const val MIN_INTERVAL_MILLIS = 10L * 60 * 1000
-        private const val SAME_CASTLE_MILLIS = 24L * 60 * 60 * 1000
+        /** 履歴の保持期間．設定で選べる最長の間隔より長くする． */
+        private const val HISTORY_MILLIS = 7L * 24 * 60 * 60 * 1000
+
+        /** 設定で選べる「同じ城を再び通知する間隔」（分，表示名） */
+        val REPEAT_OPTIONS: List<Pair<Int, String>> = listOf(
+            0 to "なし", 5 to "5 分", 10 to "10 分", 30 to "30 分", 60 to "1 時間", 6 * 60 to "6 時間", 24 * 60 to "24 時間", 7 * 24 * 60 to "7 日",
+        )
+
+        private fun repeatMillis(settings: AppSettings): Long = settings.carNotifyRepeatMinutes * 60_000L
 
         fun ensureChannel(context: Context) {
             if (Build.VERSION.SDK_INT < 26) return

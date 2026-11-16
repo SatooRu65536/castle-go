@@ -32,6 +32,8 @@ data class AppSettings(
     val carNotifyDistanceKm: Double = 1.0,
     val carNotifyMinScale: Int = 4,
     val carNotifyUnvisitedOnly: Boolean = false,
+    /** 同じ城を再び通知するまでの間隔（分） */
+    val carNotifyRepeatMinutes: Int = 24 * 60,
     /** アプリを閉じている間も通知する（Geofencing）．背景の位置情報の権限（常に許可）が必要． */
     val backgroundNotifyEnabled: Boolean = false,
     /** 地図に表示する規模の集合（[dev.satooru.castles.go.data.local.ScaleMask]）．既定はすべて */

@@ -38,6 +38,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.satooru.castles.go.data.repository.SyncResult
+import dev.satooru.castles.go.notify.NearbyNotifier
 import dev.satooru.castles.go.settings.NearbyMode
 import dev.satooru.castles.go.settings.TravelMode
 import dev.satooru.castles.go.ui.common.AppCard
@@ -134,6 +135,10 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     DropdownField(
                         "規模の下限", (1..6).map { it to "$it 以上" }, settings.carNotifyMinScale,
                         { s -> if (s != null) update { it.copy(carNotifyMinScale = s) } }, noneLabel = null,
+                    )
+                    DropdownField(
+                        "同じ城を再び通知する間隔", NearbyNotifier.REPEAT_OPTIONS, settings.carNotifyRepeatMinutes,
+                        { m -> if (m != null) update { it.copy(carNotifyRepeatMinutes = m) } }, noneLabel = null,
                     )
                     SwitchRow("未訪問の城のみ", settings.carNotifyUnvisitedOnly) { v ->
                         update { it.copy(carNotifyUnvisitedOnly = v) }

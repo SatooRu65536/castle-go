@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.car.app.notification.CarAppExtender
+import androidx.car.app.notification.CarPendingIntent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -36,6 +37,13 @@ class NearbyNotifier(private val context: Context, private val container: AppCon
     private val notifiedDao = container.database.notifiedCastleDao()
     private val prefs = context.getSharedPreferences("nearby_suppressed", Context.MODE_PRIVATE)
     private var appOpenHandled = false
+
+    /**
+     * Android Auto の周辺画面が前面にあるときに，通知の代わりに呼ぶ処理．
+     * 設定されている間は，システムの通知（ヘッズアップ）を出さずにこれへ渡す．
+     */
+    @Volatile
+    var inCarAppHandler: ((castle: CastleEntity, label: String) -> Unit)? = null
 
     /** 通知しない城の ID．範囲の外へ出たら外す． */
     private fun suppressedIds(): Set<String> = prefs.getStringSet(KEY_SUPPRESSED, emptySet()).orEmpty().toSet()
@@ -119,10 +127,16 @@ class NearbyNotifier(private val context: Context, private val container: AppCon
     }
 
     private suspend fun post(castle: CastleEntity, distanceMeters: Double?, now: Long) {
-        val text = listOfNotNull(
-            distanceMeters?.let { Labels.distance(it) },
-            Labels.tenshuStatus(castle.tenshuStatus)?.let { "天守: $it" },
-        ).joinToString(" ・ ")
+        // 「名古屋城(規模 6) 1.5km」．距離が分からないときは省く．
+        val label = "${castle.name}(規模 ${castle.scale})" +
+            distanceMeters?.let { " " + Labels.distance(it).replace(" ", "") }.orEmpty()
+        val inCarApp = inCarAppHandler
+        if (inCarApp != null) {
+            inCarApp(castle, label)
+            notifiedDao.upsert(NotifiedCastleEntity(castle.id, now))
+            suppress(listOf(castle.id))
+            return
+        }
         val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         val openApp = PendingIntent.getActivity(
             context, castle.id.hashCode(),
@@ -131,22 +145,24 @@ class NearbyNotifier(private val context: Context, private val container: AppCon
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
             flags,
         )
-        val openCar = PendingIntent.getService(context, castle.id.hashCode(), CarIntents.openCastle(context, castle.id), flags)
+        // 車載側の通知は，ホストが必要な extras を足せる CarPendingIntent で開く．
+        val openCar = CarPendingIntent.getCarApp(context, castle.id.hashCode(), CarIntents.openCastle(context, castle.id), 0)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_castle)
-            .setContentTitle("${castle.name} が近くにあります")
-            .setContentText(text)
+            .setContentTitle(label)
             .setContentIntent(openApp)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
             .setAutoCancel(true)
+            // 車載のヘッズアップの表示時間はホストが決める．通知は 30 秒で取り下げる．
+            .setTimeoutAfter(NOTIFICATION_TIMEOUT_MILLIS)
             .extend(
                 CarAppExtender.Builder()
                     .setImportance(NotificationManagerCompat.IMPORTANCE_HIGH)
-                    .setContentTitle(castle.name)
-                    .setContentText(text)
+                    .setContentTitle(label)
                     .setSmallIcon(R.drawable.ic_stat_castle)
                     .setContentIntent(openCar)
+                    .addAction(R.drawable.ic_stat_castle, "詳細を開く", openCar)
                     .build(),
             )
             .build()
@@ -167,6 +183,7 @@ class NearbyNotifier(private val context: Context, private val container: AppCon
     companion object {
         const val CHANNEL_ID = "nearby_castle"
         private const val NOTIFICATION_ID = 1001
+        private const val NOTIFICATION_TIMEOUT_MILLIS = 30_000L
         private const val KEY_SUPPRESSED = "ids"
         private const val MIN_INTERVAL_MILLIS = 10L * 60 * 1000
         /** 履歴の保持期間．設定で選べる最長の間隔より長くする． */

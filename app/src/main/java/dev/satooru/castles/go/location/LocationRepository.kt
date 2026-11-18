@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import android.location.Location
 import android.os.Looper
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationCallback
@@ -42,6 +43,11 @@ class LocationRepository(
     private val client = LocationServices.getFusedLocationProviderClient(context)
     private val permissionTick = MutableStateFlow(0)
 
+    private val _heading = MutableStateFlow<Float?>(null)
+
+    /** 進行方向（真北から時計回りの度）．移動していて方位が得られたときのみ更新し，得られないときは最後の値を保つ． */
+    val heading: StateFlow<Float?> = _heading
+
     val location: StateFlow<GeoPoint?> = combine(
         permissionTick,
         settings.settings.map { it.travelMode.locationIntervalMillis }.distinctUntilChanged(),
@@ -58,11 +64,18 @@ class LocationRepository(
     /** 権限の許可の結果が変わったときに呼ぶ． */
     fun onPermissionChanged() = permissionTick.update { it + 1 }
 
+    private fun updateHeading(loc: Location) {
+        if (loc.hasBearing() && loc.speed >= MIN_HEADING_SPEED) _heading.value = loc.bearing
+    }
+
     @SuppressLint("MissingPermission")
     private fun updates(intervalMillis: Long): Flow<GeoPoint> = callbackFlow {
         try {
             client.lastLocation.addOnSuccessListener { loc ->
-                if (loc != null) trySend(GeoPoint(loc.latitude, loc.longitude))
+                if (loc != null) {
+                    updateHeading(loc)
+                    trySend(GeoPoint(loc.latitude, loc.longitude))
+                }
             }
         } catch (e: SecurityException) {
             close()
@@ -73,7 +86,10 @@ class LocationRepository(
             .build()
         val callback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
-                result.lastLocation?.let { trySend(GeoPoint(it.latitude, it.longitude)) }
+                result.lastLocation?.let {
+                    updateHeading(it)
+                    trySend(GeoPoint(it.latitude, it.longitude))
+                }
             }
         }
         try {
@@ -84,5 +100,10 @@ class LocationRepository(
             return@callbackFlow
         }
         awaitClose { client.removeLocationUpdates(callback) }
+    }
+
+    private companion object {
+        /** これより遅いと方位が不安定なため，進行方向に使わない（m/s） */
+        const val MIN_HEADING_SPEED = 1f
     }
 }

@@ -218,3 +218,29 @@ object DistanceCalculator {
         return 2 * r * Math.asin(minOf(1.0, Math.sqrt(h)))
     }
 }
+
+/** 方角の計算．方位は真北から時計回りの度（0 以上 360 未満）． */
+object Direction {
+    private val COMPASS = listOf("北", "北東", "東", "南東", "南", "南西", "西", "北西")
+    private val RELATIVE = listOf("前方", "右前方", "右", "右後方", "後方", "左後方", "左", "左前方")
+
+    /** [from] から [to] への方位 */
+    fun bearing(from: GeoPoint, to: GeoPoint): Double {
+        val lat1 = Math.toRadians(from.lat)
+        val lat2 = Math.toRadians(to.lat)
+        val dLng = Math.toRadians(to.lng - from.lng)
+        val y = Math.sin(dLng) * Math.cos(lat2)
+        val x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng)
+        return normalize(Math.toDegrees(Math.atan2(y, x)))
+    }
+
+    /** 方位を 8 方位（北・北東…）にする */
+    fun compass(bearing: Double): String = COMPASS[sector(bearing)]
+
+    /** 進行方向 [heading] から見た [bearing] の向きを 8 方向（前方・右前方…）にする */
+    fun relative(bearing: Double, heading: Double): String = RELATIVE[sector(bearing - heading)]
+
+    private fun normalize(degrees: Double): Double = ((degrees % 360) + 360) % 360
+
+    private fun sector(degrees: Double): Int = (Math.floor((normalize(degrees) + 22.5) / 45).toInt()) % 8
+}

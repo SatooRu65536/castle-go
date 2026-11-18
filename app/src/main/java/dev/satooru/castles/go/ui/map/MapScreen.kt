@@ -108,6 +108,7 @@ fun MapScreen(
     val castles by viewModel.castles.collectAsStateWithLifecycle()
     val nearby by viewModel.nearby.collectAsStateWithLifecycle()
     val selected by viewModel.selected.collectAsStateWithLifecycle()
+    val selectedVisited by viewModel.selectedVisited.collectAsStateWithLifecycle()
     val settings by container.settingsRepository.settings.collectAsStateWithLifecycle()
     val syncing by viewModel.syncing.collectAsStateWithLifecycle()
     val syncError by viewModel.syncError.collectAsStateWithLifecycle()
@@ -343,13 +344,19 @@ fun MapScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             LocationPermissionBanner(container.locationRepository)
-            selected?.let { castle -> SelectedCastleCard(castle, location, openCastle) }
+            selected?.let { castle -> SelectedCastleCard(castle, location, selectedVisited, openCastle, viewModel::toggleVisited) }
         }
     }
 }
 
 @Composable
-private fun SelectedCastleCard(castle: CastleEntity, location: GeoPoint?, onOpenCastle: (String) -> Unit) {
+private fun SelectedCastleCard(
+    castle: CastleEntity,
+    location: GeoPoint?,
+    visited: Boolean,
+    onOpenCastle: (String) -> Unit,
+    onToggleVisited: (String, Boolean) -> Unit,
+) {
     AppCard(Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(castle.name, style = MaterialTheme.typography.titleMedium)
@@ -370,6 +377,7 @@ private fun SelectedCastleCard(castle: CastleEntity, location: GeoPoint?, onOpen
             PrimaryButton("ここに行く", outlined = true, onClick = {
                 ExternalNavigation.start(context, castle.lat, castle.lng)
             })
+            PrimaryButton(if (visited) "訪問済み" else "未訪問", outlined = true, onClick = { onToggleVisited(castle.id, visited) })
         }
     }
 }

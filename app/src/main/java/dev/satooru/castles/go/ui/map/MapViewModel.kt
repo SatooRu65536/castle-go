@@ -117,6 +117,18 @@ class MapViewModel(private val container: AppContainer) : ViewModel() {
 
     fun select(castle: CastleEntity?) { selected.value = castle }
 
+    private val visits = container.visitRepository
+
+    /** 選択中の城を訪問済みか */
+    val selectedVisited: StateFlow<Boolean> = selected
+        .flatMapLatest { c -> if (c == null) flow { emit(false) } else visits.observe(c.id).map { it != null } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /** 選択中の城の訪問済みを切り替える */
+    fun toggleVisited(castleId: String, visited: Boolean) {
+        viewModelScope.launch { if (visited) visits.unmark(castleId) else visits.markVisited(castleId) }
+    }
+
     companion object {
         const val NEARBY_COUNT = 3
 
